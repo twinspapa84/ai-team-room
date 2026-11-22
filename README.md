@@ -4,7 +4,6 @@
 최종 산출물까지 완성하는 **단일 HTML 웹앱**입니다. 외부 CDN·이미지·폰트 의존이 없습니다.
 
 - 배포본: https://twinspapa84.github.io/ai-team-room/
-
 - 파일: `index.html` (약 133KB, 인라인 CSS/SVG/JS)
 - 검증: **156항목 전부 통과** (모바일 390×844 · 데스크톱 1280×800)
 
