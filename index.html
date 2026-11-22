@@ -650,11 +650,21 @@ const MEMBERS = {
 const ORDER = ['strategy','copy','build','qa'];
 const PROVIDERS = {
   openai:{label:'OpenAI', tag:'GPT', model:'gpt-4o-mini', hint:'sk-...'},
-  gemini:{label:'Gemini', tag:'Google', model:'gemini-2.0-flash', hint:'AIza...'},
+  gemini:{label:'Gemini', tag:'Google', model:'gemini-3.8-flash', hint:'AIza...'},
   claude:{label:'Claude', tag:'Anthropic', model:'claude-3-5-haiku-latest', hint:'sk-ant-...'}
 };
 const LS = {api:'atr.api.v1', sessions:'atr.sessions.v1', prefs:'atr.prefs.v1'};
 const MAX_SESSIONS = 10;
+/* 더 이상 제공되지 않는 이전 기본 모델명 → 현재 기본 모델명 (저장값 자동 교체) */
+const MODEL_MIGRATIONS = {'gemini-2.0-flash':'gemini-3.8-flash'};
+function migrateModels(models){
+  let changed = false;
+  Object.keys(models||{}).forEach(function(p){
+    const cur = String(models[p]||'').trim();
+    if(MODEL_MIGRATIONS[cur]){ models[p] = MODEL_MIGRATIONS[cur]; changed = true; }
+  });
+  return changed;
+}
 
 /* ---------------- 2. 아이콘 ---------------- */
 function robotSvg(size){
@@ -737,11 +747,16 @@ function loadApi(){
     const base = {provider:'openai', keys:{openai:'',gemini:'',claude:''}, models:{openai:'',gemini:'',claude:''}};
     if(!raw) return base;
     const o = JSON.parse(raw);
-    return {
+    const st = {
       provider: PROVIDERS[o.provider] ? o.provider : 'openai',
       keys: Object.assign(base.keys, o.keys||{}),
       models: Object.assign(base.models, o.models||{})
     };
+    // 예전 버전에서 저장된 기본 모델명(gemini-2.0-flash)은 현재 모델명으로 자동 교체
+    if(migrateModels(st.models)){
+      try{ localStorage.setItem(LS.api, JSON.stringify(st)); }catch(e){}
+    }
+    return st;
   }catch(e){ return {provider:'openai', keys:{openai:'',gemini:'',claude:''}, models:{openai:'',gemini:'',claude:''}}; }
 }
 function saveApi(){
