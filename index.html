@@ -1,0 +1,2549 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f1ff">
+<meta name="description" content="지휘관 1명 + AI 팀원 4명이 회의실에서 핑퐁하며 결과물을 완성하는 웹 회의실">
+<title>AI TEAM ROOM · 실시간 협업 회의실</title>
+<style>
+/* ============ tokens ============ */
+:root{
+  --bg:#f4f1ff;
+  --bg-2:#fbf8f2;
+  --surface:#ffffff;
+  --line:#e9e4f8;
+  --line-2:#d9d2f0;
+  --text:#221d38;
+  --muted:#6d6690;
+  --faint:#9a94b6;
+  --lav:#7b6cf6;
+  --lav-2:#a08cff;
+  --lav-soft:#efecff;
+  --green:#2ecc71;
+  --radius:20px;
+  --shadow:0 8px 26px rgba(74,58,140,.09);
+  --shadow-sm:0 2px 10px rgba(74,58,140,.06);
+  --font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic","Segoe UI",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--font);
+  color:var(--text);
+  background:
+    radial-gradient(900px 460px at 8% -12%, #e8e1ff 0%, rgba(232,225,255,0) 62%),
+    radial-gradient(720px 420px at 102% 2%, #e2fbf2 0%, rgba(226,251,242,0) 58%),
+    radial-gradient(600px 380px at 50% 108%, #fff3df 0%, rgba(255,243,223,0) 60%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow:hidden;
+}
+button{font-family:inherit}
+button,input,textarea{font-family:inherit}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+[hidden]{display:none !important}
+
+/* ============ shell ============ */
+.app{
+  height:100vh;height:100dvh;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+/* topbar */
+.topbar{
+  flex:0 0 auto;display:flex;align-items:center;gap:9px;
+  padding:9px 13px;
+  background:rgba(255,255,255,.74);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);
+  backdrop-filter:blur(16px) saturate(1.2);
+  border-bottom:1px solid var(--line);
+  position:relative;z-index:30;
+  padding-top:calc(9px + env(safe-area-inset-top));
+}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.logo{
+  width:36px;height:36px;flex:0 0 auto;border-radius:12px;
+  background:linear-gradient(145deg,#8b7bff,#b3a2ff 60%,#cbbfff);
+  display:grid;place-items:center;color:#fff;
+  box-shadow:0 6px 16px rgba(123,108,246,.32), inset 0 1px 0 rgba(255,255,255,.45);
+}
+.brand h1{margin:0;font-size:14.5px;font-weight:900;letter-spacing:.01em;line-height:1.15;white-space:nowrap}
+.brand .sub{margin:2px 0 0;font-size:10px;color:var(--muted);line-height:1.2;white-space:nowrap}
+.spacer{flex:1 1 auto;min-width:4px}
+.mode-chip{
+  border:1px solid var(--line-2);background:#fff;color:var(--muted);
+  font-size:11px;font-weight:800;padding:0 10px;height:32px;border-radius:999px;
+  display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;
+  min-height:32px;
+}
+.mode-chip .d{width:6px;height:6px;border-radius:50%;background:#b9b2d6}
+.mode-chip.api{background:#f4f0ff;border-color:#d6caff;color:#5b4bd6}
+.mode-chip.api .d{background:var(--lav);box-shadow:0 0 0 3px rgba(123,108,246,.16)}
+.icon-btn{
+  width:36px;height:36px;flex:0 0 auto;border-radius:12px;border:1px solid var(--line);
+  background:#fff;color:var(--muted);display:grid;place-items:center;cursor:pointer;
+  transition:border-color .15s, color .15s, background .15s;
+}
+.icon-btn:hover{border-color:var(--line-2);color:var(--lav);background:#fcfbff}
+.icon-btn:active{transform:scale(.96)}
+
+/* team bar */
+.team-bar{
+  flex:0 0 auto;display:flex;gap:7px;padding:9px 12px;overflow-x:auto;
+  scrollbar-width:none;-ms-overflow-style:none;
+  background:rgba(255,255,255,.45);
+  border-bottom:1px solid var(--line);
+}
+.team-bar::-webkit-scrollbar{display:none}
+.member{
+  --c:#b9b2d6;--cb:#f4f2fb;--ci:#6d6690;
+  flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;
+  padding:5px 6px;border-radius:14px;background:#fff;
+  border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  position:relative;transition:box-shadow .2s,border-color .2s,transform .2s;
+}
+.member .av{
+  width:24px;height:24px;border-radius:8px;display:grid;place-items:center;
+  background:var(--cb);color:var(--c);flex:0 0 auto;
+}
+.member .tt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.member .nm{font-size:10.8px;font-weight:900;line-height:1.1;color:var(--text);white-space:nowrap}
+.member .st{font-size:9px;line-height:1.1;color:var(--faint);display:flex;align-items:center;gap:3px;white-space:nowrap}
+.member .sd{width:5px;height:5px;border-radius:50%;background:#c9c3dc;flex:0 0 auto}
+.member.is-think{border-color:var(--c);box-shadow:0 0 0 3px rgba(123,108,246,.14), var(--shadow-sm)}
+.member.is-think .sd{background:var(--c);animation:blink 1s ease-in-out infinite}
+.member.is-think .st{color:var(--ci)}
+.member.is-done .sd{background:var(--c)}
+.member.is-done .st{color:var(--ci);font-weight:700}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+
+/* tabs (mobile) */
+.tabs{
+  flex:0 0 auto;display:flex;gap:6px;padding:7px 12px;
+  background:rgba(255,255,255,.5);border-bottom:1px solid var(--line);
+}
+.tab{
+  flex:1;height:34px;border-radius:11px;border:1px solid transparent;background:transparent;
+  font-size:12.5px;font-weight:800;color:var(--muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+}
+.tab.is-on{background:#fff;border-color:var(--line);color:var(--lav);box-shadow:var(--shadow-sm)}
+.tab .badge{
+  min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--lav);color:#fff;
+  font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;
+}
+
+/* layout */
+.layout{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.room{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.timeline{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:16px 12px 10px;display:flex;flex-direction:column;gap:11px;
+  scrollbar-width:thin;
+}
+.timeline::-webkit-scrollbar{width:6px}
+.timeline::-webkit-scrollbar-thumb{background:#ddd6f5;border-radius:6px}
+
+/* empty state */
+.empty{
+  margin:auto 0;padding:8px 4px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;
+  animation:fade .35s ease both;
+}
+.empty-hero{width:100%;max-width:330px;margin:0 0 12px}
+.empty-hero svg{width:100%;height:auto;display:block}
+.empty h2{margin:0 0 6px;font-size:18px;font-weight:900;letter-spacing:-.02em;line-height:1.3}
+.empty h2 em{font-style:normal;color:var(--lav)}
+.empty p.lead{margin:0 0 16px;font-size:12.5px;line-height:1.6;color:var(--muted);max-width:290px}
+.presets{display:flex;flex-direction:column;gap:8px;width:100%;max-width:400px}
+.preset{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:11px 12px;border-radius:16px;border:1px solid var(--line);background:#fff;
+  box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .14s,border-color .14s,box-shadow .14s;
+}
+.preset:hover{border-color:#cfc3fb;box-shadow:0 8px 20px rgba(123,108,246,.13);transform:translateY(-1px)}
+.preset:active{transform:scale(.99)}
+.preset .pi{
+  width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto;
+  background:var(--pbg);color:var(--pc);
+}
+.preset .pt{flex:1 1 auto;min-width:0}
+.preset .pt b{display:block;font-size:13px;font-weight:900;letter-spacing:-.01em;margin-bottom:2px}
+.preset .pt span{display:block;font-size:11px;color:var(--muted);line-height:1.35}
+.preset .go{color:var(--faint);flex:0 0 auto}
+.fine{margin:12px 2px 0;font-size:10.5px;color:var(--faint);line-height:1.5}
+
+/* messages */
+.msg{display:flex;gap:8px;align-items:flex-start;animation:pop .26s cubic-bezier(.22,1.1,.4,1) both}
+.msg .av{
+  flex:0 0 auto;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;
+  background:var(--cb);color:var(--c);margin-top:3px;box-shadow:var(--shadow-sm);
+}
+.wrap{min-width:0;max-width:calc(100% - 42px)}
+.meta{display:flex;align-items:baseline;gap:6px;margin:0 0 4px 3px;font-size:10px;color:var(--faint)}
+.meta b{font-size:11px;color:var(--ci);font-weight:900}
+.meta .rt{font-size:9.5px}
+.bubble{
+  background:#fff;border:1px solid var(--line);border-radius:5px 16px 16px 16px;
+  padding:10px 12px;font-size:13px;line-height:1.66;color:var(--text);
+  box-shadow:var(--shadow-sm);overflow-wrap:anywhere;
+}
+.bubble p{margin:0 0 7px}
+.bubble p:last-child{margin-bottom:0}
+.bubble .bl{display:block}
+.bubble strong{font-weight:800;color:#1b1633}
+.bubble code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+  background:#f4f1ff;border-radius:5px;padding:1px 4px;
+}
+.msg.cmd{flex-direction:row-reverse}
+.msg.cmd .wrap{max-width:86%}
+.msg.cmd .meta{justify-content:flex-end;margin:0 3px 4px 0;color:#a9a2c6}
+.msg.cmd .meta b{color:#5b4bd6}
+.msg.cmd .bubble{
+  background:linear-gradient(140deg,#7b6cf6,#9d8bff 70%,#b4a4ff);
+  color:#fff;border:0;border-radius:16px 5px 16px 16px;
+  box-shadow:0 8px 20px rgba(110,92,235,.28);
+}
+.msg.cmd .av{background:#e6fbef;color:#1f9d55}
+.sys{
+  align-self:center;display:inline-flex;align-items:center;gap:6px;
+  font-size:10.5px;color:var(--muted);background:rgba(255,255,255,.85);
+  border:1px dashed var(--line-2);border-radius:999px;padding:5px 12px;
+  text-align:center;animation:fade .3s ease both;
+}
+.sys b{color:var(--lav);font-weight:800}
+.typing .bubble{display:flex;align-items:center;gap:9px;padding:11px 13px;color:var(--muted);font-size:11.5px}
+.dots{display:inline-flex;gap:3px;align-items:center}
+.dots i{width:5px;height:5px;border-radius:50%;background:var(--c);display:block;animation:bounce 1.1s infinite}
+.dots i:nth-child(2){animation-delay:.15s}
+.dots i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-3px);opacity:1}}
+@keyframes pop{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* composer */
+.composer{
+  flex:0 0 auto;padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.9);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);
+}
+.composer textarea{
+  display:block;width:100%;resize:none;border:1.5px solid var(--line-2);border-radius:14px;
+  padding:11px 12px;background:#fff;color:var(--text);
+  font-size:16px;line-height:1.45;min-height:48px;max-height:118px;
+  transition:border-color .15s, box-shadow .15s;
+  -webkit-appearance:none;appearance:none;
+}
+.composer textarea::placeholder{color:#a8a2c0;font-size:13px}
+.composer textarea:focus{outline:none;border-color:var(--lav);box-shadow:0 0 0 3px rgba(123,108,246,.13)}
+.composer-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.seg{
+  display:inline-flex;background:#f2effc;border-radius:11px;padding:3px;gap:2px;flex:0 0 auto;
+}
+.seg-btn{
+  border:0;background:transparent;color:var(--muted);font-size:11.5px;font-weight:800;
+  padding:0 9px;height:28px;border-radius:9px;cursor:pointer;
+}
+.seg-btn.is-on{background:#fff;color:var(--lav);box-shadow:0 1px 4px rgba(74,58,140,.12)}
+.model-hint{flex:1 1 auto;min-width:0;font-size:10px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{
+  border:0;border-radius:13px;min-height:44px;padding:0 15px;
+  font-size:13.5px;font-weight:900;letter-spacing:-.01em;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  cursor:pointer;transition:transform .12s, box-shadow .15s, opacity .15s;
+  flex:0 0 auto;
+}
+.btn:active{transform:scale(.975)}
+.btn.primary{
+  background:linear-gradient(142deg,#7b6cf6,#9c88ff 62%,#b3a3ff);color:#fff;
+  box-shadow:0 7px 18px rgba(123,108,246,.32);
+}
+.btn.primary:disabled{opacity:.42;box-shadow:none;cursor:default}
+.btn.ghost{background:#fff;border:1px solid var(--line-2);color:var(--text)}
+.btn.soft{background:#f4f1ff;color:#5b4bd6;border:1px solid #e2daff}
+.btn.tiny{min-height:34px;padding:0 11px;font-size:11.5px;border-radius:10px}
+.btn.block{width:100%}
+.running{display:flex;align-items:center;gap:9px;padding:3px 0 2px}
+.running-info{flex:1 1 auto;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:#4c4370;min-width:0}
+.running-info span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:0 0 auto;box-shadow:0 0 0 0 rgba(46,204,113,.5);animation:ring 1.6s infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(46,204,113,.45)}70%{box-shadow:0 0 0 8px rgba(46,204,113,0)}100%{box-shadow:0 0 0 0 rgba(46,204,113,0)}}
+
+/* directive */
+.directive{display:flex;flex-direction:column;gap:8px}
+.d-head{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:900;color:#4c4370}
+.ver-chip{
+  font-size:10px;font-weight:800;color:#5b4bd6;background:#f0ecff;border:1px solid #e0d8ff;
+  border-radius:999px;padding:2px 7px;
+}
+.chips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;border:1px solid var(--line-2);background:#fff;color:#56507a;
+  font-size:11px;font-weight:700;border-radius:999px;padding:6px 10px;cursor:pointer;
+  min-height:30px;
+}
+.chip:hover{border-color:#cbbdfb;color:#5b4bd6;background:#fbfaff}
+.d-actions{display:flex;gap:7px;margin-top:2px}
+.d-actions .btn{flex:1 1 0}
+.d-actions .btn.ghost{flex:0 0 auto;min-width:88px}
+
+/* panel */
+.panel{
+  display:none;flex-direction:column;min-height:0;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  margin:10px 12px 12px;box-shadow:var(--shadow);
+}
+body[data-view="result"] .panel{display:flex}
+body[data-view="result"] .room{display:none}
+.panel-head{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  padding:11px 12px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfaff,#fff);
+}
+.panel-title{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:900;color:#3b3360}
+.panel-title .live{width:7px;height:7px;border-radius:50%;background:var(--purple, #8b5cf6);box-shadow:0 0 0 3px rgba(139,92,246,.14)}
+.panel-title .ver{font-size:10px;font-weight:900;color:#5b4bd6;background:#f0ecff;border-radius:7px;padding:2px 6px}
+.panel-actions{display:flex;gap:5px;flex:0 0 auto}
+.panel-actions .btn{padding:0 9px;font-size:11px;gap:4px}
+.panel-meta{flex:0 0 auto;padding:8px 13px;font-size:10.5px;color:var(--faint);border-bottom:1px solid #f3f0fc;line-height:1.45}
+.panel-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:13px 14px 22px;scrollbar-width:thin}
+.panel-body::-webkit-scrollbar{width:6px}
+.panel-body::-webkit-scrollbar-thumb{background:#ddd6f5;border-radius:6px}
+.panel-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 10px;color:var(--faint)}
+.panel-empty .pe-ico{width:46px;height:46px;border-radius:15px;background:#f5f2ff;display:grid;place-items:center;color:#b6a9f0;margin-bottom:10px}
+.panel-empty b{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+.panel-empty span{font-size:11px;line-height:1.55;max-width:210px}
+
+/* result markdown */
+.md{font-size:12.8px;line-height:1.7;color:#2b2544}
+.md h1{font-size:16px;line-height:1.35;margin:0 0 4px;letter-spacing:-.02em;font-weight:900}
+.md h2{
+  font-size:12px;font-weight:900;color:#5b4bd6;margin:18px 0 7px;
+  display:flex;align-items:center;gap:6px;
+}
+.md h2::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--lav);flex:0 0 auto}
+.md h2:first-child{margin-top:0}
+.md h3{font-size:12.3px;font-weight:900;margin:13px 0 5px;color:#38305c}
+.md p{margin:0 0 8px}
+.md ul{margin:0 0 8px;padding-left:15px}
+.md li{margin:0 0 4px}
+.md li::marker{color:#b3a6f2}
+.md ol{margin:0 0 8px;padding-left:17px}
+.md blockquote{
+  margin:0 0 9px;padding:8px 11px;border-left:3px solid #d6cbfb;background:#faf8ff;
+  border-radius:0 10px 10px 0;color:#4b4370;
+}
+.md .lines{
+  background:#fbf9ff;border:1px solid #ece6fd;border-radius:12px;padding:9px 11px;margin:0 0 10px;
+  font-size:12.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.md .chk{list-style:none;padding-left:0}
+.md .chk li{display:flex;gap:7px;align-items:flex-start;margin-bottom:5px}
+.md .chk .bx{flex:0 0 auto;width:13px;height:13px;border-radius:4px;border:1.5px solid #cec4f3;margin-top:3px}
+.md .risk{margin:0 0 7px;display:flex;gap:7px;align-items:flex-start}
+.md .risk .tag{
+  flex:0 0 auto;font-size:9.5px;font-weight:900;color:#8a5a00;background:#fff5d6;
+  border-radius:6px;padding:2px 5px;margin-top:1px;
+}
+.md .risk b{font-weight:800}
+.md .risk span{color:#4a4468}
+.md hr{border:0;border-top:1px solid #efeafd;margin:14px 0}
+.md .tagv{
+  display:inline-block;font-size:10px;font-weight:900;color:#0b7c6c;background:#e4faf6;
+  border-radius:7px;padding:2px 6px;margin:0 4px 6px 0;
+}
+
+/* modals */
+.modal{
+  position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(38,28,76,.34);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  padding:0;animation:fade .18s ease both;
+}
+.modal[hidden]{display:none}
+.sheet{
+  width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;
+  background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -14px 50px rgba(40,28,90,.25);
+  animation:up .26s cubic-bezier(.2,1,.35,1) both;overflow:hidden;
+}
+@keyframes up{from{transform:translateY(22px);opacity:.6}to{transform:none;opacity:1}}
+.sheet-head{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:14px 14px 10px;
+  border-bottom:1px solid #f3f0fc;
+}
+.sheet-head h2{margin:0;font-size:15px;font-weight:900;letter-spacing:-.02em;flex:1 1 auto}
+.sheet-body{flex:1 1 auto;overflow-y:auto;padding:13px 14px calc(18px + env(safe-area-inset-bottom))}
+.note{
+  margin:0 0 12px;font-size:11.5px;line-height:1.6;color:var(--muted);
+  background:#f8f6ff;border:1px solid #ece6fd;border-radius:12px;padding:9px 11px;
+}
+.providers{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.prov{
+  border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:9px 6px;
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:11.5px;font-weight:900;color:#4b4370;min-height:56px;justify-content:center;
+}
+.prov span{font-size:9.5px;font-weight:700;color:var(--faint)}
+.prov.is-on{border-color:var(--lav);background:#f7f4ff;box-shadow:0 0 0 3px rgba(123,108,246,.1)}
+.prov.is-on span{color:#7b6cf6}
+.field{display:block;margin-bottom:11px}
+.field .lb{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800;color:#56507a;margin-bottom:5px}
+.field input{
+  width:100%;height:44px;border:1.5px solid var(--line-2);border-radius:12px;padding:0 11px;
+  font-size:16px;background:#fff;color:var(--text);-webkit-appearance:none;appearance:none;
+}
+.field input:focus{outline:none;border-color:var(--lav);box-shadow:0 0 0 3px rgba(123,108,246,.12)}
+.eye{border:0;background:transparent;color:#7b6cf6;font-size:10.5px;font-weight:800;cursor:pointer;padding:0}
+.key-state{font-size:10.5px;color:var(--faint);margin:-4px 0 10px}
+.key-state.ok{color:#0b7c6c}
+.sheet-actions{display:flex;gap:6px;margin-top:4px}
+.sheet-actions .btn{flex:1 1 0;min-height:42px;font-size:12px}
+.test-result{
+  margin-top:10px;font-size:11px;line-height:1.55;border-radius:11px;padding:9px 11px;
+  background:#f8f6ff;border:1px solid #ece6fd;color:#4b4370;overflow-wrap:anywhere;
+}
+.test-result.err{background:#fff5f5;border-color:#ffdcdc;color:#a33}
+.test-result.ok{background:#effbf6;border-color:#cdf1e3;color:#0b7c6c}
+.fine2{margin:12px 0 0;font-size:10px;line-height:1.6;color:var(--faint)}
+
+/* history */
+.hist-list{display:flex;flex-direction:column;gap:7px}
+.hist{
+  display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid var(--line);
+  border-radius:14px;background:#fff;
+}
+.hist .hi{flex:1 1 auto;min-width:0}
+.hist b{display:block;font-size:12px;font-weight:800;line-height:1.35;margin-bottom:2px;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hist .hm{font-size:10px;color:var(--faint);display:flex;gap:6px;align-items:center}
+.hist .hm .tagm{color:#5b4bd6;background:#f2eeff;border-radius:5px;padding:1px 5px;font-weight:800}
+.hist .ha{display:flex;flex-direction:column;gap:4px;flex:0 0 auto}
+.hist .btn{min-height:30px;padding:0 9px;font-size:10.5px;border-radius:9px}
+.hist-empty{text-align:center;color:var(--faint);font-size:11.5px;padding:26px 10px;line-height:1.6}
+
+/* toast */
+.toast{
+  position:fixed;left:50%;bottom:calc(200px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
+  background:#241d3d;color:#fff;font-size:12px;font-weight:700;padding:10px 16px;border-radius:999px;
+  box-shadow:0 10px 30px rgba(30,20,70,.3);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+  z-index:200;max-width:88vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* tablet */
+@media (min-width:600px) and (max-width:979px){
+  .team-bar{justify-content:center;gap:7px;padding:10px 16px}
+  .member{flex:0 0 auto;min-width:132px;max-width:180px}
+  .tabs{max-width:680px;width:100%;margin:0 auto}
+  .room{max-width:680px;width:100%;margin:0 auto}
+  .panel{max-width:680px;width:calc(100% - 24px);margin-left:auto;margin-right:auto}
+  .timeline{padding-left:20px;padding-right:20px}
+  .composer{padding-left:18px;padding-right:18px}
+  .bubble{font-size:13.5px}
+  .wrap{max-width:min(620px,88%)}
+}
+
+/* desktop */
+@media (min-width:980px){
+  body{overflow:auto}
+  .topbar{padding:11px 22px}
+  .brand h1{font-size:16px}
+  .brand .sub{font-size:10.5px}
+  .logo{width:40px;height:40px;border-radius:13px}
+  .team-bar{justify-content:center;gap:9px;padding:11px 20px;overflow:visible}
+  .member{padding:6px 13px 6px 7px;min-width:150px}
+  .member .av{width:30px;height:30px;border-radius:10px}
+  .member .nm{font-size:12px}
+  .member .st{font-size:10.5px}
+  .member .av{width:30px;height:30px}
+  .tabs{display:none}
+  .layout{
+    display:grid;grid-template-columns:minmax(0,1.08fr) minmax(360px,.92fr);
+    gap:16px;padding:16px 22px 20px;max-width:1420px;width:100%;margin:0 auto;
+  }
+  .room{
+    background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:22px;
+    overflow:hidden;box-shadow:var(--shadow);
+  }
+  .timeline{padding:20px 18px 12px;gap:13px}
+  .bubble{font-size:13.5px;max-width:100%}
+  .wrap{max-width:min(560px,86%)}
+  .composer{background:rgba(255,255,255,.86);padding:11px 14px 13px}
+  .panel{display:flex;margin:0;border-radius:22px}
+  .panel-body{padding:16px 18px 26px}
+  .md{font-size:13px}
+  .md h1{font-size:17.5px}
+  .panel-actions .btn{padding:0 11px;font-size:11.5px}
+  #backBtn{display:none}
+  .empty{padding:24px 6%}
+  .empty-hero{max-width:380px}
+  .empty h2{font-size:21px}
+  .empty p.lead{font-size:13px;max-width:340px}
+  .presets{max-width:420px}
+  .directive textarea{font-size:15px}
+  .modal{align-items:center;padding:24px}
+  .sheet{border-radius:22px;max-height:88vh}
+  .toast{bottom:92px}
+  .member{flex:0 0 auto;min-width:150px}
+}
+@media (min-width:1280px){
+  .layout{grid-template-columns:minmax(0,1.1fr) minmax(420px,.9fr);gap:18px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body data-view="room">
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M12 2.6l2.1 5.5 5.5 2.1-5.5 2.1L12 17.8l-2.1-5.5L4.4 10.2l5.5-2.1L12 2.6z" fill="currentColor" opacity=".95"/><circle cx="18.6" cy="18.4" r="2.1" fill="currentColor" opacity=".65"/><circle cx="5.6" cy="19.2" r="1.4" fill="currentColor" opacity=".45"/></svg>
+      </div>
+      <div>
+        <h1>AI TEAM ROOM</h1>
+        <p class="sub">지휘관 1명 · AI 팀원 4명 실시간 협업</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <button type="button" class="mode-chip" id="modeChip" aria-label="실행 모드 변경"><span class="d"></span><span id="modeChipText">체험 모드</span></button>
+    <button type="button" class="icon-btn" id="historyBtn" aria-label="회의 이력" title="회의 이력">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3 4.5V9h4.5"/><path d="M12 8v4.4l3 1.8"/></svg>
+    </button>
+    <button type="button" class="icon-btn" id="settingsBtn" aria-label="API 설정" title="API 설정">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64h.1a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9v.1a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <div class="team-bar" id="teamBar" aria-label="팀원 상태"></div>
+
+  <nav class="tabs" id="tabs" aria-label="화면 전환">
+    <button type="button" class="tab is-on" data-view="room">회의실</button>
+    <button type="button" class="tab" data-view="result">결과물 <span class="badge" id="resultBadge" hidden>1</span></button>
+  </nav>
+
+  <div class="layout">
+    <section class="room" aria-label="회의실 타임라인">
+      <div class="timeline" id="timeline" aria-live="polite"></div>
+      <div class="composer" id="composer">
+        <div id="composerTop">
+          <label class="sr-only" for="agendaInput">안건 입력</label>
+          <textarea id="agendaInput" rows="2" maxlength="300" placeholder="안건을 한 줄로 던져주세요. 예) 12월 신메뉴 오픈 홍보"></textarea>
+          <div class="composer-bar">
+            <div class="seg" id="modeSeg" role="group" aria-label="실행 모드">
+              <button type="button" class="seg-btn is-on" data-mode="demo">체험</button>
+              <button type="button" class="seg-btn" data-mode="api">API</button>
+            </div>
+            <span class="model-hint" id="modelHint"></span>
+            <button type="button" class="btn primary" id="startBtn" disabled>회의 시작</button>
+          </div>
+        </div>
+        <div class="running" id="runningBar" hidden>
+          <div class="running-info"><span class="pulse-dot"></span><span class="t" id="runningText">회의 진행 중…</span></div>
+          <button type="button" class="btn tiny ghost" id="stopBtn">중단</button>
+          <button type="button" class="btn tiny ghost" id="fastBtn">빠르게</button>
+        </div>
+        <div class="directive" id="directiveBox" hidden>
+          <div class="d-head"><span>지휘관 추가 지시</span><span class="ver-chip" id="dirVer">v1 완료</span></div>
+          <div class="chips" id="directiveChips">
+            <button type="button" class="chip" data-dir="말투 더 담백하게">말투 더 담백하게</button>
+            <button type="button" class="chip" data-dir="가격대 낮춰서">가격대 낮춰서</button>
+            <button type="button" class="chip" data-dir="더 짧고 간결하게">더 짧게</button>
+            <button type="button" class="chip" data-dir="10대 타깃으로 바꿔서">10대 타깃으로</button>
+          </div>
+          <label class="sr-only" for="directiveInput">추가 지시</label>
+          <textarea id="directiveInput" rows="1" maxlength="200" placeholder="예) 말투 더 담백하게, 가격대 낮춰서"></textarea>
+          <div class="d-actions">
+            <button type="button" class="btn ghost" id="newBtn">새 회의</button>
+            <button type="button" class="btn primary" id="directiveBtn">팀에 재지시</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel" id="panel" aria-label="최종 결과물">
+      <div class="panel-head">
+        <div class="panel-title"><span class="live"></span>최종 결과물<span class="ver" id="resultVersion">v0</span></div>
+        <div class="panel-actions">
+          <button type="button" class="btn tiny ghost" id="backBtn">회의실</button>
+          <button type="button" class="btn tiny ghost" id="copyBtn" disabled>복사</button>
+          <button type="button" class="btn tiny soft" id="mdBtn" disabled>.md 저장</button>
+        </div>
+      </div>
+      <div class="panel-meta" id="panelMeta">아직 결과물이 없어요</div>
+      <div class="panel-body" id="resultBody"></div>
+    </aside>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="sheet-head">
+      <h2 id="settingsTitle">API 설정</h2>
+      <button type="button" class="icon-btn" data-close="settingsModal" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <p class="note">API 키를 넣으면 실제 LLM이 팀원 역할로 회의합니다. 키는 <b>이 브라우저 localStorage에만</b> 저장되고, 선택한 제공사 서버 외에는 전송되지 않습니다.</p>
+      <div class="providers" id="providers">
+        <button type="button" class="prov is-on" data-provider="openai">OpenAI<span>GPT</span></button>
+        <button type="button" class="prov" data-provider="gemini">Gemini<span>Google</span></button>
+        <button type="button" class="prov" data-provider="claude">Claude<span>Anthropic</span></button>
+      </div>
+      <div class="field">
+        <div class="lb"><label for="keyInput">API 키</label><span><button type="button" class="eye" id="eyeBtn">보기</button></span></div>
+        <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-...">
+      </div>
+      <div class="field">
+        <div class="lb"><label for="modelInput">모델</label><span style="font-weight:700;color:#9a94b6" id="modelDefault"></span></div>
+        <input id="modelInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="key-state" id="keyState">저장된 키 없음</div>
+      <div class="sheet-actions">
+        <button type="button" class="btn ghost" id="clearKeyBtn">키 삭제</button>
+        <button type="button" class="btn ghost" id="testBtn">연결 테스트</button>
+        <button type="button" class="btn primary" id="saveKeyBtn">저장</button>
+      </div>
+      <div class="test-result" id="testResult" hidden></div>
+      <p class="fine2">· 키는 암호화되지 않은 브라우저 저장소에 남습니다. 공용 기기에서는 사용 후 삭제하세요.<br>· 제공사 요금이 발생할 수 있습니다(회의 1회 ≈ 7회 호출).<br>· 브라우저에서 직접 호출하므로 제공사가 CORS를 막으면 오류가 날 수 있습니다.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="historyModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <div class="sheet-head">
+      <h2 id="historyTitle">회의 이력</h2>
+      <button type="button" class="btn tiny ghost" id="clearHistBtn">전체 삭제</button>
+      <button type="button" class="icon-btn" data-close="historyModal" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body"><div class="hist-list" id="histList"></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* =========================================================================
+   AI TEAM ROOM — 지휘관 1명 + AI 팀원 4명 회의실
+   단일 HTML · 외부 의존 없음 · 체험(데모) / 실전(API) 두 모드
+   ========================================================================= */
+
+/* ---------------- 1. 상수 ---------------- */
+const MEMBERS = {
+  strategy:{id:'strategy', name:'전략', role:'전략/기획', color:'#ef8f2d', bg:'#fff2e2', ink:'#a55f0c'},
+  copy:    {id:'copy',     name:'카피', role:'카피/콘텐츠', color:'#17b6a0', bg:'#e3faf5', ink:'#0a7a6a'},
+  build:   {id:'build',    name:'제작', role:'제작/구현', color:'#dfa200', bg:'#fff7d6', ink:'#8a6300'},
+  qa:      {id:'qa',       name:'검수', role:'검수/리스크', color:'#8b5cf6', bg:'#f2ecff', ink:'#5f31c4'}
+};
+const ORDER = ['strategy','copy','build','qa'];
+const PROVIDERS = {
+  openai:{label:'OpenAI', tag:'GPT', model:'gpt-4o-mini', hint:'sk-...'},
+  gemini:{label:'Gemini', tag:'Google', model:'gemini-2.0-flash', hint:'AIza...'},
+  claude:{label:'Claude', tag:'Anthropic', model:'claude-3-5-haiku-latest', hint:'sk-ant-...'}
+};
+const LS = {api:'atr.api.v1', sessions:'atr.sessions.v1', prefs:'atr.prefs.v1'};
+const MAX_SESSIONS = 10;
+
+/* ---------------- 2. 아이콘 ---------------- */
+function robotSvg(size){
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 32 32" fill="none" aria-hidden="true">'
+    +'<path d="M16 5.2v2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+    +'<circle cx="16" cy="3.6" r="2" fill="currentColor"/>'
+    +'<rect x="5.4" y="8" width="21.2" height="17.2" rx="8.2" stroke="currentColor" stroke-width="1.7" fill="currentColor" fill-opacity=".16"/>'
+    +'<circle cx="12.2" cy="15.1" r="1.85" fill="currentColor"/>'
+    +'<circle cx="19.8" cy="15.1" r="1.85" fill="currentColor"/>'
+    +'<path d="M12.7 19.6c1.9 1.7 4.7 1.7 6.6 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
+    +'</svg>';
+}
+function commanderSvg(size){
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 32 32" fill="none" aria-hidden="true">'
+    +'<path d="M16 7.4c6 0 10 4.2 10 9.4 0 5.4-4 9.8-10 9.8S6 22.2 6 16.8C6 11.6 10 7.4 16 7.4z" fill="#3ed47f"/>'
+    +'<ellipse cx="12.9" cy="16.6" rx="1.7" ry="2.3" fill="#12331f"/>'
+    +'<ellipse cx="19.1" cy="16.6" rx="1.7" ry="2.3" fill="#12331f"/>'
+    +'<path d="M9 9.6h14l1.7 3.2H7.3z" fill="#2b3352"/>'
+    +'<path d="M9.7 7.6h12.6c.8 0 1.3.7 1 1.4H8.7c-.3-.7.2-1.4 1-1.4z" fill="#3b4368"/>'
+    +'<circle cx="16" cy="6.6" r="1.6" fill="#ffd166"/>'
+    +'</svg>';
+}
+const ICON = {
+  gear:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.3a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.7h.1a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  clock:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3 4.5V9h4.5"/><path d="M12 8v4.4l3 1.8"/></svg>',
+  send:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 20 4l-6.5 16-2.4-6.2z"/><path d="M11.1 13.8 20 4"/></svg>',
+  copy:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5.5 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v.5"/></svg>',
+  down:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 20h15"/></svg>',
+  back:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg>',
+  play:'<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.2c0-.9 1-1.5 1.8-1L19 11c.8.5.8 1.6 0 2.1L9.8 19.8c-.8.5-1.8-.1-1.8-1z"/></svg>',
+  thread:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.2a8 8 0 0 1-11.6 7.1L4 19.5l1.2-4.6a8 8 0 1 1 15.3-3.7z"/><path d="M9 10h6M9 13.4h4"/></svg>',
+  reels:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="4.4" width="17.6" height="15.2" rx="4"/><path d="m10 9.3 5 2.7-5 2.7z"/></svg>',
+  page:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="3.6" width="17.2" height="16.8" rx="3"/><path d="M3.4 8.4h17.2"/><path d="M7.6 12.2h6M7.6 15.4h8.8"/></svg>',
+  trash:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4.8h6V7"/><path d="M6.5 7l.9 12.2h9.2L17.5 7"/></svg>'
+};
+
+/* ---------------- 3. 유틸 ---------------- */
+const $ = (sel, root) => (root||document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root||document).querySelectorAll(sel));
+const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const uid = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function pad(n){ return n<10 ? '0'+n : ''+n; }
+function timeLabel(ts){
+  const d = new Date(ts);
+  return pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function dateLabel(ts){
+  const d = new Date(ts);
+  return (d.getMonth()+1)+'.'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function fileStamp(ts){
+  const d = new Date(ts);
+  return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes());
+}
+function inlineFmt(text){
+  let s = esc(text);
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+function bubbleHtml(text){
+  const parts = String(text).split(/\n\s*\n/);
+  return parts.map(p => '<p>'+inlineFmt(p)+'</p>').join('');
+}
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------------- 4. 저장소 ---------------- */
+function loadApi(){
+  try{
+    const raw = localStorage.getItem(LS.api);
+    const base = {provider:'openai', keys:{openai:'',gemini:'',claude:''}, models:{openai:'',gemini:'',claude:''}};
+    if(!raw) return base;
+    const o = JSON.parse(raw);
+    return {
+      provider: PROVIDERS[o.provider] ? o.provider : 'openai',
+      keys: Object.assign(base.keys, o.keys||{}),
+      models: Object.assign(base.models, o.models||{})
+    };
+  }catch(e){ return {provider:'openai', keys:{openai:'',gemini:'',claude:''}, models:{openai:'',gemini:'',claude:''}}; }
+}
+function saveApi(){
+  try{ localStorage.setItem(LS.api, JSON.stringify(S.api)); }catch(e){}
+}
+function loadSessions(){
+  try{
+    const raw = localStorage.getItem(LS.sessions);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter(x => x && x.agenda && Array.isArray(x.messages)) : [];
+  }catch(e){ return []; }
+}
+function persistSession(sess){
+  if(!sess || !sess.result) return;
+  try{
+    const list = loadSessions();
+    const slim = clone(sess);
+    slim.status = 'done';
+    const i = list.findIndex(x => x.id === slim.id);
+    if(i >= 0) list[i] = slim; else list.unshift(slim);
+    while(list.length > MAX_SESSIONS) list.pop();
+    localStorage.setItem(LS.sessions, JSON.stringify(list));
+  }catch(e){}
+}
+function modelOf(p){ return (S.api.models[p] || '').trim() || PROVIDERS[p].model; }
+function keyOf(p){ return (S.api.keys[p] || '').trim(); }
+
+/* ---------------- 5. 상태 ---------------- */
+const params = new URLSearchParams(location.search);
+const S = {
+  mode: params.get('mode') === 'api' ? 'api' : 'demo',
+  speed: params.get('speed') === 'instant' ? 'instant' : (params.get('speed') === 'fast' ? 'fast' : 'normal'),
+  api: loadApi(),
+  session: null,
+  running: false,
+  runToken: 0,
+  view: 'room'
+};
+
+/* ---------------- 6. 팀 상태 바 ---------------- */
+function renderTeamBar(){
+  const bar = $('#teamBar');
+  bar.innerHTML = ORDER.map(id => {
+    const m = MEMBERS[id];
+    return '<div class="member" data-member="'+id+'" style="--c:'+m.color+';--cb:'+m.bg+';--ci:'+m.ink+'">'
+      +'<div class="av">'+robotSvg(18)+'</div>'
+      +'<div class="tt"><span class="nm">'+m.name+'</span>'
+      +'<span class="st"><span class="sd"></span><span class="stx">대기</span></span></div></div>';
+  }).join('');
+}
+function setMemberStatus(id, st){
+  const el = $('.member[data-member="'+id+'"]');
+  if(!el) return;
+  el.classList.toggle('is-think', st === 'think');
+  el.classList.toggle('is-done', st === 'done');
+  const tx = $('.stx', el);
+  if(tx) tx.textContent = st === 'think' ? '생각중' : (st === 'done' ? '발언완료' : '대기');
+}
+function resetTeamStatuses(){ ORDER.forEach(id => setMemberStatus(id,'idle')); }
+
+/* ---------------- 7. 타임라인 ---------------- */
+function heroSvg(){
+  const rows = ORDER.map((id,i) => {
+    const m = MEMBERS[id];
+    const y = 44 + i*30;
+    return '<g transform="translate(0,'+y+')">'
+      +'<rect x="106" y="0" width="30" height="26" rx="10" fill="'+m.bg+'" stroke="'+m.color+'" stroke-width="1.6"/>'
+      +'<path d="M121 -3v3" stroke="'+m.color+'" stroke-width="1.6" stroke-linecap="round"/>'
+      +'<circle cx="121" cy="-4.2" r="1.8" fill="'+m.color+'"/>'
+      +'<circle cx="115.6" cy="11" r="1.7" fill="'+m.color+'"/>'
+      +'<circle cx="126.4" cy="11" r="1.7" fill="'+m.color+'"/>'
+      +'<path d="M116 16.6c1.7 1.5 4.3 1.5 6 0" stroke="'+m.color+'" stroke-width="1.6" stroke-linecap="round"/>'
+      +'<path d="M140 13h'+ (150 - i*16) +'a9 9 0 0 1 0 18h-'+ (150 - i*16) +'a9 9 0 0 1 0-18z" fill="'+m.bg+'" opacity=".85"/>'
+      +'</g>';
+  }).join('');
+  return '<svg viewBox="0 0 340 178" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+    +'<rect x="88" y="22" width="244" height="146" rx="22" fill="#ffffff" stroke="#e6dffa"/>'
+    +'<path d="M88 44a22 22 0 0 1 22-22h200a22 22 0 0 1 22 22v8H88z" fill="#f3efff"/>'
+    +'<circle cx="104" cy="37" r="3.6" fill="#f2a0a0"/><circle cx="116" cy="37" r="3.6" fill="#f5d488"/><circle cx="128" cy="37" r="3.6" fill="#9adcb8"/>'
+    + rows
+    +'<g transform="translate(6,84)">'
+    +'<path d="M30 6c18 0 30 12 30 27s-12 30-30 30S0 50 0 33 12 6 30 6z" fill="#3ed47f"/>'
+    +'<ellipse cx="21" cy="31" rx="5" ry="7" fill="#12331f"/><ellipse cx="39" cy="31" rx="5" ry="7" fill="#12331f"/>'
+    +'<path d="M8 12h42l4 9H4z" fill="#2b3352"/><path d="M10 6h38c2 0 4 2 3 4H7c-1-2 1-4 3-4z" fill="#3b4368"/>'
+    +'<circle cx="29" cy="3" r="4.4" fill="#ffd166"/>'
+    +'<path d="M74 40c8-6 14-10 22-12" stroke="#b9a9f7" stroke-width="2" stroke-dasharray="4 4" stroke-linecap="round"/></g>'
+    +'</svg>';
+}
+function emptyStateHtml(){
+  const cards = [
+    {k:'thread', icon:ICON.thread, c:'#ef8f2d', bg:'#fff2e2', t:'스레드 제휴 글 3줄', s:'훅 3줄 + 대가성 댓글까지'},
+    {k:'reels', icon:ICON.reels, c:'#17b6a0', bg:'#e3faf5', t:'동네 학원 숏폼 릴스', s:'15초 3컷 콘티 + 자막'},
+    {k:'landing', icon:ICON.page, c:'#8b5cf6', bg:'#f2ecff', t:'1인 부업 랜딩페이지', s:'8섹션 구조 + 카피'}
+  ];
+  return '<div class="empty">'
+    +'<div class="empty-hero">'+heroSvg()+'</div>'
+    +'<h2>안건 하나면 <em>회의가 시작</em>돼요</h2>'
+    +'<p class="lead">지휘관은 방향만 잡으세요. 4명이 서로 받아치며 결과물까지 완성합니다.</p>'
+    +'<div class="presets">'+cards.map(c =>
+      '<button type="button" class="preset" data-preset="'+c.k+'" style="--pc:'+c.c+';--pbg:'+c.bg+'">'
+      +'<span class="pi">'+c.icon+'</span>'
+      +'<span class="pt"><b>'+c.t+'</b><span>'+c.s+'</span></span>'
+      +'<span class="go">'+ICON.play+'</span></button>').join('')+'</div>'
+    +'<p class="fine">API 키 없이 체험 모드로 바로 실행 · 실제 LLM은 오른쪽 위 설정</p>'
+    +'</div>';
+}
+function resetTimeline(){
+  $('#timeline').innerHTML = emptyStateHtml();
+}
+function scrollBottom(force){
+  const tl = $('#timeline');
+  if(!tl) return;
+  tl.scrollTop = tl.scrollHeight;
+}
+function appendMessage(msg){
+  const tl = $('#timeline');
+  const empty = $('.empty', tl);
+  if(empty) empty.remove();
+  const el = document.createElement('div');
+  el.className = 'msg';
+  if(msg.kind === 'sys'){
+    el.className = 'sys';
+    el.innerHTML = msg.bold ? ('<b>'+esc(msg.bold)+'</b> '+esc(msg.text)) : esc(msg.text);
+    tl.appendChild(el);
+    scrollBottom();
+    return;
+  }
+  if(msg.kind === 'cmd'){
+    el.className = 'msg cmd';
+    el.innerHTML = '<div class="av">'+commanderSvg(19)+'</div>'
+      +'<div class="wrap"><div class="meta"><b>'+(msg.label||'지휘관')+'</b><span class="rt">'+timeLabel(msg.at||Date.now())+'</span></div>'
+      +'<div class="bubble">'+bubbleHtml(msg.text)+'</div></div>';
+    tl.appendChild(el);
+    scrollBottom();
+    return;
+  }
+  const m = MEMBERS[msg.member] || MEMBERS.strategy;
+  el.setAttribute('data-member', m.id);
+  el.style.setProperty('--c', m.color);
+  el.style.setProperty('--cb', m.bg);
+  el.style.setProperty('--ci', m.ink);
+  el.innerHTML = '<div class="av">'+robotSvg(20)+'</div>'
+    +'<div class="wrap"><div class="meta"><b>'+m.name+'</b><span class="rt">'+m.role+'</span><span class="rt">'+timeLabel(msg.at||Date.now())+'</span></div>'
+    +'<div class="bubble">'+bubbleHtml(msg.text)+'</div></div>';
+  tl.appendChild(el);
+  scrollBottom();
+}
+function showTyping(id){
+  hideTyping();
+  const m = MEMBERS[id] || MEMBERS.strategy;
+  const tl = $('#timeline');
+  const el = document.createElement('div');
+  el.className = 'msg typing';
+  el.id = 'typingRow';
+  el.setAttribute('data-member', m.id);
+  el.style.setProperty('--c', m.color);
+  el.style.setProperty('--cb', m.bg);
+  el.style.setProperty('--ci', m.ink);
+  el.innerHTML = '<div class="av">'+robotSvg(20)+'</div>'
+    +'<div class="wrap"><div class="meta"><b>'+m.name+'</b><span class="rt">'+m.role+'</span></div>'
+    +'<div class="bubble"><span class="dots" style="--c:'+m.color+'"><i></i><i></i><i></i></span> '+m.name+' 팀원이 생각 중…</div></div>';
+  tl.appendChild(el);
+  scrollBottom();
+}
+function hideTyping(){
+  const t = $('#typingRow');
+  if(t) t.remove();
+}
+
+/* ---------------- 8. 결과물 패널 ---------------- */
+function resultToHtml(r){
+  if(!r) return '';
+  let h = '<article class="md">';
+  h += '<h1>'+esc(r.title || '최종 산출물')+'</h1>';
+  h += '<h2>한 줄 결론</h2><p>'+inlineFmt(r.summary || '')+'</p>';
+  (r.sections||[]).forEach(s => {
+    if(s.h) h += '<h2>'+esc(s.h)+'</h2>';
+    if(s.type === 'ul') h += '<ul>'+s.items.map(i => '<li>'+inlineFmt(i)+'</li>').join('')+'</ul>';
+    else if(s.type === 'ol') h += '<ol>'+s.items.map(i => '<li>'+inlineFmt(i)+'</li>').join('')+'</ol>';
+    else if(s.type === 'p') h += '<p>'+inlineFmt(s.text||'')+'</p>';
+    else if(s.type === 'pre') h += '<div class="lines">'+esc(s.text||'')+'</div>';
+    else if(s.type === 'check') h += '<ul class="chk">'+s.items.map(i => '<li><span class="bx"></span><span>'+inlineFmt(i)+'</span></li>').join('')+'</ul>';
+    else if(s.type === 'risk') h += s.items.map(i => '<div class="risk"><span class="tag">주의</span><div><b>'+inlineFmt(i.k)+'</b><br><span>'+inlineFmt(i.v)+'</span></div></div>').join('');
+  });
+  h += '</article>';
+  return h;
+}
+function resultToMarkdown(r){
+  if(!r) return '';
+  const out = [];
+  out.push('# ' + (r.title || '최종 산출물'));
+  out.push('');
+  out.push('## 한 줄 결론');
+  out.push(r.summary || '');
+  (r.sections||[]).forEach(s => {
+    out.push('');
+    if(s.h) out.push('## ' + s.h);
+    if(s.type === 'ul') s.items.forEach(i => out.push('- ' + i));
+    else if(s.type === 'ol') s.items.forEach((i,n) => out.push((n+1)+'. ' + i));
+    else if(s.type === 'p') out.push(s.text || '');
+    else if(s.type === 'pre') out.push((s.text||'').split('\n').map(l => l).join('\n'));
+    else if(s.type === 'check') s.items.forEach(i => out.push('- [ ] ' + i));
+    else if(s.type === 'risk') s.items.forEach(i => out.push('- **' + i.k + '** — ' + i.v));
+  });
+  return out.join('\n');
+}
+function renderPanel(){
+  const sess = S.session;
+  const body = $('#resultBody');
+  const has = !!(sess && sess.result);
+  $('#copyBtn').disabled = !has;
+  $('#mdBtn').disabled = !has;
+  $('#resultVersion').textContent = 'v' + (sess ? (sess.version||0) : 0);
+  if(has){
+    const modeTxt = sess.mode === 'api' ? ('API · ' + PROVIDERS[sess.provider||'openai'].label) : '체험 모드';
+    $('#panelMeta').textContent = sess.agenda.length > 46 ? sess.agenda.slice(0,46)+'…' : sess.agenda;
+    $('#panelMeta').textContent += ' · ' + modeTxt + ' · 팀원 4명';
+    body.innerHTML = resultToHtml(sess.result);
+    $('#resultBadge').textContent = 'v' + sess.version;
+    $('#resultBadge').hidden = false;
+    $('#resultBadge').setAttribute('data-v', sess.version);
+  } else {
+    $('#panelMeta').textContent = '아직 결과물이 없어요';
+    body.innerHTML = '<div class="panel-empty"><div class="pe-ico">'
+      + '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h7l4.5 4.5v12a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5v-15A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8h4.5"/><path d="M8.6 13h6.8M8.6 16.4h4.6"/></svg></div>'
+      + '<b>회의가 끝나면 여기에 정리돼요</b><span>최종 산출물 · 실행 체크리스트 · 리스크 대응까지 한 번에</span></div>';
+    $('#resultBadge').hidden = true;
+  }
+}
+
+/* ---------------- 9. 입력 컴포저 ---------------- */
+function syncComposer(){
+  const running = S.running;
+  const done = !!(S.session && S.session.status === 'done' && S.session.result);
+  $('#composerTop').hidden = running || done;
+  $('#runningBar').hidden = !running;
+  $('#directiveBox').hidden = running || !done;
+  if(done){
+    $('#dirVer').textContent = 'v' + S.session.version + ' 완료';
+    $('#directiveBtn').disabled = false;
+  }
+  if(!running){
+    $('#startBtn').disabled = !$('#agendaInput').value.trim();
+  }
+  syncModelHint();
+}
+function syncModelHint(){
+  const hint = $('#modelHint');
+  if(S.mode === 'api'){
+    const p = S.api.provider;
+    hint.textContent = keyOf(p) ? (PROVIDERS[p].label + ' · ' + modelOf(p)) : 'API 키 필요';
+    hint.style.color = keyOf(p) ? '#8b83ad' : '#c4751b';
+  } else {
+    hint.textContent = 'API 키 없이 바로 실행';
+    hint.style.color = '#9a94b6';
+  }
+}
+function setMode(mode){
+  if(S.running) return;
+  if(mode === 'api' && !keyOf(S.api.provider)){
+    S.mode = 'api';
+    updateModeUi();
+    openModal('settingsModal');
+    toast('API 키를 저장하면 실전 모드로 회의합니다');
+    return;
+  }
+  S.mode = mode;
+  updateModeUi();
+}
+function updateModeUi(){
+  $$('#modeSeg .seg-btn').forEach(b => b.classList.toggle('is-on', b.dataset.mode === S.mode));
+  const chip = $('#modeChip');
+  chip.classList.toggle('api', S.mode === 'api');
+  $('#modeChipText').textContent = S.mode === 'api' ? 'API 모드' : '체험 모드';
+  syncModelHint();
+}
+
+/* ---------------- 10. 화면 전환 ---------------- */
+function setView(v){
+  S.view = v;
+  document.body.setAttribute('data-view', v);
+  $$('.tab').forEach(t => t.classList.toggle('is-on', t.dataset.view === v));
+  if(v === 'result') renderPanel();
+  window.scrollTo(0,0);
+}
+
+/* =========================================================================
+   11. 체험 모드 엔진 — 프리셋 3종 + 커스텀 안건 생성
+   ========================================================================= */
+const PRESET_AGENDAS = {
+  thread:'스레드 제휴 글 3줄 스타일 — 사무실 책상용 미니 가습기',
+  reels:'동네 학원 숏폼 릴스 기획 — 15초 오답 유형편',
+  landing:'1인 부업 랜딩페이지 구조 — 스레드 제휴 자동화 세팅'
+};
+
+/* ---- 프리셋 1: 스레드 제휴 글 3줄 ---- */
+function threadWork(){
+  return {
+    key:'thread', label:'스레드 제휴 글 3줄', topic:'사무실 책상용 미니 가습기',
+    messages:[
+      {m:'strategy', t:`안건 받았습니다. 목표를 숫자로 먼저 고정할게요.
+
+· 목표: 7일간 1/2 글 30건 → 링크 클릭 45회(CTR 15%) → 구매 3건
+· 타깃 1: 오후만 되면 목이 칼칼한 20~30대 사무직 (점심 후 15시에 지갑이 열림)
+· 타깃 2: 난방 켜고 자면 코가 막히는 1인 가구 (밤 22시 탐색)
+· 핵심 포인트: 스펙 나열 금지. '책상 위 15cm' 장면 하나로 승부, 후기는 사용 기간이 확인되는 1개만
+· KPI: 저장 수(도달 신호) → 2/2 링크 클릭
+
+카피 팀원은 타깃 1 기준으로 3줄 훅부터 뽑아주세요. 300ml·28dB 같은 스펙은 2/2로 내립시다.`},
+      {m:'copy', t:`타깃 1의 '오후 3시'를 훅으로 잡았습니다. 1/2 초안 3줄입니다.
+
+1) 출근 3시간이면 목이 칼칼해지는 사람?
+2) 책상 위 15cm, 물 한 컵으로 오후가 덜 괴로워집니다
+3) 3주 써보고 남은 건 '물 보충 하루 한 번'뿐
+
+2/2 제휴 댓글:
+"이 게시물은 쿠팡 파트너스 활동의 일환으로 수수료를 받을 수 있습니다.
+✔ 하루 물 보충 1회 · 300ml
+✔ USB-C · 소음 28dB
+✔ 지금 2만원대 (가격은 링크에서 확인)
+→ [제품 링크]"
+
+대가성 문구는 첫 줄에 고정했습니다. 제작 팀원, 발행 스펙 잡아주세요.`},
+      {m:'build', t:`발행 스펙으로 고정합니다.
+
+· 1/2: 3줄, 각 24~30자, 이모지 1개 이하, 줄바꿈 그대로(모바일 3줄 안에 들어와야 함)
+· 2/2: 4줄 이내, 첫 줄 대가성 문구, 링크 1개만
+· 이미지: 실사용 컷 1장(책상·컵·제품). 텍스트 오버레이는 넣지 않습니다 — 도달 손해
+· 발행: 07:30(출근길) / 21:30(취침 전), 같은 본문으로 A/B
+· 해시태그: 0~1개(#책상가습기)만. 3개 이상은 스팸 신호
+· 발행 30분 내 2/2 고정 댓글, 1시간 뒤 저장 수 기록
+· 자동발행은 1/2 → 30초 뒤 2/2 타래로 걸어두세요
+
+검수 팀원, 이 스펙에서 규정 리스크 봐주세요.`},
+      {m:'qa', t:`스펙은 괜찮고, 문구에서 4개 걸립니다.
+
+1) "3주 써보고" — 실제 사용 기간이 아니면 허위 후기 리스크입니다. 직접 쓴 게 아니면 '일주일 써본 후기'로 내리거나 2/2에 후기 출처를 밝히세요.
+2) "오후가 덜 괴로워집니다" — 효능 단정으로 읽힙니다. '덜 건조하게 느껴졌어요'처럼 주관 표현으로 바꾸세요.
+3) "지금 2만원대" — 가격이 변하면 오해 소지. 숫자는 빼고 '가격은 링크에서 확인'만 남기는 게 안전합니다.
+4) 대가성 문구를 2/2 첫 줄에 둔 건 정확합니다. 1/2에는 '광고' 표기를 넣지 마세요 — 규정상 2/2로 충분하고 도달만 손해입니다.
+
+카피 팀원, 3줄 유지하면서 1~3번 반영한 최종본 주세요.`},
+      {m:'copy', t:`검수 지적 반영했습니다. 3줄 유지, 길이는 24~30자로 맞췄습니다.
+
+1) 출근 3시간이면 목이 칼칼해지는 사람?
+2) 책상 위 15cm, 물 한 컵으로 오후가 덜 건조하게 느껴졌어요  ← '덜 괴로워집니다' 수정
+3) 일주일 써보고 남은 건 '물 보충 하루 한 번'뿐  ← '3주' 삭제, 사용 기간 근거 없음
+
+2/2는 '지금 2만원대'를 지우고 '가격은 링크에서 확인'만 남겼습니다. 대가성 문구는 그대로 첫 줄입니다.`},
+      {m:'build', t:`최종 발행 세팅입니다.
+
+① 1/2 본문(3줄) → ② 30초 뒤 2/2 타래(대가성 문구 + 스펙 3 + 링크) → ③ 30분 뒤 고정 댓글
+· 발행 07:30 / 21:30, 7일 30건 중 같은 제품은 하루 1회만(도배 인식 방지)
+· 이미지 실사용 컷 1장, 4:5 세로 크롭, 캡션에 링크 중복 금지
+· 3일차 CTR 10% 미만이면 훅을 2안('난방 켜고 자면 코가 막히는 사람?')으로 교체
+· 주간 결산: 발행 수 / 저장 / 링크 클릭 / 구매를 같은 표에 기록`},
+      {m:'strategy', t:`확정합니다. 결과물 패널에 정리해뒀어요.
+
+· 판단: 제품 설명이 아니라 '오후 3시의 목'이라는 장면 하나로 7일 테스트
+· 승인 기준: 3일 CTR 10%, 7일 구매 3건. 미달이면 훅만 교체하고 1주 연장
+· 다음 액션: 오늘 21:30 1차 발행, 내일 07:30 같은 본문 A/B, 금요일 결산`}
+    ],
+    result:{
+      title:'스레드 제휴 글 3줄 — 사무실 책상용 미니 가습기',
+      summary:'제품 스펙이 아니라 "오후 3시의 목" 장면 하나로 7일간 30건 테스트하고, 3일차 CTR 10% 미달이면 훅만 교체합니다.',
+      sections:[
+        {h:'타깃 & 핵심 포인트', type:'ul', items:[
+          '타깃 1 — 오후만 되면 목이 칼칼한 20~30대 사무직 (점심 후 15시 탐색)',
+          '타깃 2 — 난방 켜고 자면 코가 막히는 1인 가구 (밤 22시 탐색)',
+          '핵심 ① 스펙 나열 대신 "책상 위 15cm" 장면 하나',
+          '핵심 ② 3줄 안에 사용 기간이 확인되는 변화 1개',
+          '핵심 ③ 링크는 2/2 댓글에만, 대가성 문구는 첫 줄'
+        ]},
+        {h:'1/2 본문 (3줄)', type:'pre', text:'출근 3시간이면 목이 칼칼해지는 사람?\n책상 위 15cm, 물 한 컵으로 오후가 덜 건조하게 느껴졌어요\n일주일 써보고 남은 건 "물 보충 하루 한 번"뿐'},
+        {h:'2/2 제휴 댓글', type:'pre', text:'이 게시물은 쿠팡 파트너스 활동의 일환으로 수수료를 받을 수 있습니다.\n✔ 하루 물 보충 1회 · 300ml\n✔ USB-C · 소음 28dB\n✔ 가격은 링크에서 확인\n→ [제품 링크]'},
+        {h:'대체 훅 (3일차 CTR 미달 시)', type:'pre', text:'난방 켜고 자면 코가 막히는 사람?'},
+        {h:'실행 체크리스트', type:'check', items:[
+          '1/2 3줄 · 각 24~30자 확인 (모바일 3줄 유지)',
+          '2/2 첫 줄 대가성 문구 · 링크 1개만',
+          '실사용 컷 1장 (4:5 크롭, 텍스트 오버레이 없음)',
+          '07:30 / 21:30 발행, 30초 뒤 타래 · 30분 내 고정 댓글',
+          '3일차 CTR 10% 확인 → 훅 교체 여부 결정',
+          '7일 결산: 발행 30건 · 클릭 45 · 구매 3'
+        ]},
+        {h:'리스크 & 대응', type:'risk', items:[
+          {k:'후기 기간 과장', v:'실제 사용 기간만 표기 ("일주일")'},
+          {k:'효능 단정', v:'"덜 건조하게 느껴졌어요" 주관 표현으로'},
+          {k:'가격 변동', v:'숫자 대신 "가격은 링크에서 확인"'},
+          {k:'대가성 표기 누락', v:'2/2 첫 줄 고정, 자동발행 템플릿에 포함'}
+        ]}
+      ]
+    }
+  };
+}
+
+/* ---- 프리셋 2: 동네 학원 숏폼 릴스 ---- */
+function reelsWork(){
+  return {
+    key:'reels', label:'동네 학원 숏폼 릴스', topic:'중등 수학 오답 유형',
+    messages:[
+      {m:'strategy', t:`목표·타깃부터 잡습니다.
+
+· 목표: 2주 4편 → 저장 120 · 프로필 방문 200 · 상담 문의 5건
+· 타깃: 중1~2 자녀를 둔 동네 학부모 (수학 70점대에서 멈춘 경우)
+· 핵심: 학원 자랑이 아니라 '우리 아이가 어디서 막히는지'를 보여주는 15초
+· 구성: 3컷 — 훅 2초 / 오답 유형 6초 / 해결 순서 + CTA 7초
+· KPI: 저장(학부모가 나중에 다시 봄) > 좋아요. 문의는 프로필 링크로만
+
+카피 팀원, 첫 2초 훅 3안 뽑아주세요. 성적을 약속하는 표현은 빼고요.`},
+      {m:'copy', t:`훅 3안입니다.
+
+① "중2 수학 70점, 이 3문제만 잡으면 85점입니다" — 숫자는 세지만 성적 약속으로 읽힘
+② "학원 더 보내기 전에, 아이 오답 노트부터 보세요" — 가장 안전하고 공감 큼
+③ "계산 실수인 줄 알았는데, 아니었습니다" — 호기심형
+
+② 기준 15초 대본:
+0~2초 시험지에 동그라미(손만)
+2~8초 자막 3줄 — "개념 구멍 / 조건 안 읽음 / 검산 없음"
+8~13초 해결 3단계 — 개념 확인 → 조건 밑줄 → 30초 검산
+13~15초 "우리 아이 오답 유형 3분 진단 · 프로필 링크"
+
+자막은 전부 넣습니다(무음 시청이 80%).`},
+      {m:'build', t:`촬영·업로드 스펙입니다.
+
+· 9:16 1080×1920, 30fps, 총 15초(±1초), 컷 3개
+· 첫 프레임에 훅 자막. 상단 15%·하단 20%는 UI에 가리니 자막 금지
+· 촬영: 창광 측면, 시험지·손글씨 클로즈업 위주(얼굴 없이 가능)
+· BGM: 릴스 라이선스 음원만, -18dB, 자막 우선
+· 커버: "70점의 이유는 3가지" 텍스트 카드
+· 업로드: 화·목 20:00, 캡션 첫 줄에 훅 반복 + 해시태그 5개
+· 4편 묶음: 오답 유형 / 시험 2주 전 루틴 / 학부모가 자주 하는 실수 / 내신 대비 순서
+
+검수 팀원, 학원 광고 규정 쪽 봐주세요.`},
+      {m:'qa', t:`규정부터 막겠습니다.
+
+1) "70점 → 85점"은 성적 상승을 약속하는 표현이라 과장·오인 광고 소지가 큽니다. 학원 광고에서 성적·실적은 근거 없이 쓰면 안 됩니다. 훅 ①은 폐기하세요.
+2) 학생 얼굴·교복·이름이 나오면 학부모 서면 동의가 필요합니다. 동의 없으면 손·시험지·칠판만 촬영하세요.
+3) 실제 후기나 성적 사례를 자막으로 넣지 마세요. "우리 원생 중 85점" 같은 표현은 근거 자료 없으면 금지입니다.
+4) 학원 명칭·교습비를 게시하면 실제 게시 정보와 일치해야 합니다.
+5) BGM은 상업 계정용 라이선스 음원만. 인기 음원은 릴스에서도 노출이 제한됩니다.
+6) "3분 진단"은 실제로 제공 가능한 서비스여야 합니다. 전화 상담이면 "3분 오답 체크 안내"로 낮추세요.
+
+카피 팀원, ② 기준으로 훅·CTA 다시 정리해 주세요.`},
+      {m:'copy', t:`검수 반영했습니다.
+
+· 훅: "학원 더 보내기 전에, 아이 오답 노트부터 보세요" 유지
+· 삭제: "70점 → 85점" 전부. 커버 카드는 "70점의 이유는 3가지"로 교체
+· CTA: "우리 아이 오답 유형 3분 체크 · 프로필 링크" (진단 → 체크로 완화)
+· 자막 최종: 0~2초 훅 / 2~8초 "개념 구멍·조건 안 읽음·검산 없음" / 8~13초 3단계 / 13~15초 CTA
+· 캡션: "중2 수학이 멈추는 지점은 대부분 세 가지입니다. 우리 아이는 어디인지 3분이면 확인할 수 있어요."
+· 해시태그: #울산북구수학 #중등수학 #오답노트 #수학공부법 #울산학원`},
+      {m:'build', t:`최종 콘티와 준비물입니다.
+
+컷1 0~2초 · 시험지 클로즈업 · 자막 "학원 더 보내기 전에"
+컷2 2~8초 · 오답 3유형 손글씨 · 자막 3줄 순차 표시
+컷3 8~15초 · 3단계 + CTA · 자막 "3분 오답 체크"
+
+준비물: 시험지 2장(개인정보 가린 것), 빨간펜, 삼각대, 창가 자리
+업로드: 화·목 20:00, 커버 카드 1장, 캡션 고정
+2주 운영: 1주차 2편(오답 유형·시험 2주 전 루틴), 2주차 2편(학부모 실수·내신 순서). 발행 48시간 뒤 저장 수 기록`},
+      {m:'strategy', t:`확정합니다.
+
+· 판단: 성적 표현을 다 빼도 훅 ②가 타깃의 실제 고민을 찌르므로 도달·저장은 유지됩니다.
+· 승인 기준: 2주 4편, 저장 120, 문의 5건. 1편 저장 20 미만이면 훅만 교체
+· 다음 액션: 오늘 시험지 2장 준비(개인정보 가림), 내일 20:00 1편 업로드`}
+    ],
+    result:{
+      title:'동네 학원 숏폼 릴스 — 15초 "오답 유형"편',
+      summary:'학원 소개 대신 "우리 아이가 어디서 막히는지"를 15초 3컷으로 보여주고, 성적 표현은 전부 빼고 저장·문의로 측정합니다.',
+      sections:[
+        {h:'타깃 & 핵심 포인트', type:'ul', items:[
+          '타깃 — 중1~2 자녀를 둔 동네 학부모 (수학 70점대에서 멈춘 경우)',
+          '핵심 ① 학원 자랑이 아니라 오답 패턴 진단 콘텐츠',
+          '핵심 ② 첫 2초에 "학원 더 보내기 전에" — 광고가 아닌 조언으로 시작',
+          '구성 — 훅 2초 / 오답 유형 6초 / 해결 3단계 + CTA 7초',
+          'KPI — 저장 120 · 프로필 방문 200 · 문의 5건 (2주)'
+        ]},
+        {h:'릴스 콘티 (15초)', type:'pre', text:'컷1 · 0~2초  | 시험지 클로즈업(손만)      | 자막 "학원 더 보내기 전에"\n컷2 · 2~8초  | 오답 3유형 손글씨          | 자막 "개념 구멍 / 조건 안 읽음 / 검산 없음"\n컷3 · 8~15초 | 해결 3단계 + 프로필 CTA    | 자막 "3분 오답 체크"'},
+        {h:'최종 자막 & 캡션', type:'pre', text:'0~2초   학원 더 보내기 전에, 아이 오답 노트부터 보세요\n2~8초   개념 구멍 · 조건 안 읽음 · 검산 없음\n8~13초  개념 확인 → 조건 밑줄 → 30초 검산\n13~15초 우리 아이 오답 유형 3분 체크 · 프로필 링크\n\n캡션: 중2 수학이 멈추는 지점은 대부분 세 가지입니다.\n우리 아이는 어디인지 3분이면 확인할 수 있어요.\n#울산북구수학 #중등수학 #오답노트 #수학공부법 #울산학원'},
+        {h:'촬영 준비물', type:'ul', items:[
+          '시험지 2장 (이름·학교 가린 것) + 빨간펜',
+          '삼각대, 창가 자리(측면 창광), 무음 촬영',
+          '커버 카드 1장 — "70점의 이유는 3가지"',
+          '릴스 라이선스 BGM (-18dB)'
+        ]},
+        {h:'2주 운영 계획', type:'ul', items:[
+          '1주차 화·목 20:00 — ① 오답 유형 ② 시험 2주 전 루틴',
+          '2주차 화·목 20:00 — ③ 학부모가 자주 하는 실수 ④ 내신 대비 순서',
+          '발행 48시간 뒤 저장 수 기록 · 1편 20 미만이면 훅만 교체',
+          '문의는 프로필 링크 하나로만 받기(댓글 유도 금지)'
+        ]},
+        {h:'실행 체크리스트', type:'check', items:[
+          '성적·합격 실적 표현 0건 확인',
+          '학생 얼굴·교복·이름 노출 없음 (또는 학부모 동의서)',
+          '자막 안전영역(상단 15%·하단 20%) 비움',
+          '커버 카드 · 캡션 · 해시태그 5개 세팅',
+          '업로드 후 48시간 저장 수 기록'
+        ]},
+        {h:'리스크 & 대응', type:'risk', items:[
+          {k:'성적 상승 약속', v:'"70점→85점" 삭제, 오답 유형 프레임으로 전환'},
+          {k:'학생 개인정보', v:'얼굴·교복·이름 노출 금지, 손·시험지만 촬영'},
+          {k:'허위 후기', v:'실제 사례 없으면 자막에 넣지 않음'},
+          {k:'BGM 저작권', v:'상업 계정 라이선스 음원만 사용'},
+          {k:'서비스 과장', v:'"3분 진단" → "3분 오답 체크"로 표현 완화'}
+        ]}
+      ]
+    }
+  };
+}
+
+/* ---- 프리셋 3: 1인 부업 랜딩페이지 ---- */
+function landingWork(){
+  return {
+    key:'landing', label:'1인 부업 랜딩페이지', topic:'스레드 제휴 자동화 세팅',
+    messages:[
+      {m:'strategy', t:`랜딩 목표부터 숫자로.
+
+· 목표: 방문 500 → 신청 15(3%) → 유료 전환 3
+· 타깃: 퇴근 후 2시간으로 월 30~50만원 부수입을 원하는 30~40 직장인. 강의 듣다 지친 사람
+· 핵심: '강의'가 아니라 '대신 세팅해 드리는 서비스'
+· 1위 메시지: "매일 30분, 손 안 대고 돌아가는 제휴 글 파이프라인"
+· 가격 3단: 세팅만 55,000원 / 세팅+30일 운영 120,000원 / 1:1 코칭 250,000원
+· KPI: 신청 폼 완료율(폼 시작 대비 70%), 크몽 링크 클릭
+
+카피 팀원, 히어로 헤드라인 3안과 섹션 카피 뼈대 잡아주세요.`},
+      {m:'copy', t:`헤드라인 3안입니다.
+
+A. "매일 30분, 손 안 대고 돌아가는 제휴 글 파이프라인" (1위 후보)
+B. "글은 AI가 쓰고, 발행은 자동으로. 나는 방향만"
+C. "부업 강의 듣다 지쳤다면, 이번엔 세팅을 맡기세요"
+
+섹션 카피 뼈대:
+· 문제: "글 쓸 시간은 없고, 매크로는 계정이 날아갈까 불안하죠"
+· 해결 3: 공식 API 발행 / 하루 30분 운영 / 링크·대가성 문구 자동
+· 작동 3단계: 신청 → 계정 연결 15분 → 첫 주 7건 발행 확인
+· 가격: 3단 + "세팅 후 30일 동안 발행 실패 시 재세팅 무료"
+· FAQ: 계정 제재, 내가 뭘 해야 하나, 환불, 유지비, 초보 가능 여부
+
+제작 팀원, 이 뼈대로 섹션 구조와 분량 잡아주세요.`},
+      {m:'build', t:`8섹션 구조로 잡습니다(모바일 순서 동일).
+
+1 히어로 — 헤드라인 + 서브 + CTA(크몽) + 실발행 스크린샷
+2 문제 공감 — 3줄, 짧게
+3 해결 — 3카드(공식 API / 하루 30분 / 자동 문구)
+4 작동 방식 — 3단계, 아이콘 + 2줄
+5 가격 — 3단 카드, 가운데 강조, VAT 포함 명시
+6 신뢰 — 실제 발행 캡처 3장 + 후기 자리(실제 확보 후)
+7 FAQ — 6문항, 아코디언
+8 최종 CTA — 신청 폼(이메일 1개) + 환불·사업자 정보
+
+분량: 히어로 60자 이내, 섹션당 250자 이내. 이미지 5장 이하, 1초 로딩. 제작 3일(1일 카피·2일 디자인·3일 폼/배포).
+
+검수 팀원, 이 구조에서 법·정책 리스크 봐주세요.`},
+      {m:'qa', t:`구조는 좋고, 문구·표기에서 5개 걸립니다.
+
+1) "월 30~50만원" 같은 기대 수익은 보장으로 읽힙니다. "수익은 계정과 상품에 따라 다릅니다"를 가격 섹션에 명시하세요.
+2) 후기 자리는 만들되 가짜 후기는 절대 금지. 확보 전에는 섹션을 비우거나 "준비 중"으로 두세요.
+3) 전자상거래법: 사업자 정보(상호·대표·연락처·주소)와 환불 정책을 푸터에 넣어야 합니다.
+4) "자동"이라는 단어가 매크로로 읽히면 안 됩니다. "Meta 공식 API 사용, 계정 제재 위험 없음"을 작동 방식에 명시하세요.
+5) 신청 폼에서 이메일을 받으면 개인정보 수집·이용 동의 체크박스가 필요합니다.
+
+카피 팀원, 1번과 4번 반영해서 헤드라인·서브·가격 문구 최종으로 주세요.`},
+      {m:'copy', t:`반영했습니다.
+
+· 채택 헤드라인: A "매일 30분, 손 안 대고 돌아가는 제휴 글 파이프라인"
+· 서브: "글은 AI가, 발행은 Meta 공식 API가. 계정 제재 위험 없이 하루 30분만 확인하세요."
+· 가격 섹션 하단 고지: "수익은 계정 상태·상품·시장에 따라 다르며, 금액을 보장하지 않습니다."
+· CTA 문구: "15분 세팅 신청 → 첫 주 7건 발행 확인"
+· 작동 방식 1단계에 "공식 API 연결(비밀번호 공유 없음)" 명시
+· B안은 A/B 테스트용으로 보관`},
+      {m:'build', t:`최종 와이어프레임과 제작 순서입니다.
+
+히어로: 헤드라인 1줄 + 서브 2줄 + CTA 버튼 1개 + 발행 스크린샷 1장(폰 목업)
+문제: 3줄 + 구분선
+해결: 카드 3개(제목 8자 + 설명 2줄)
+작동: 3단계 번호 + 아이콘 + 각 2줄
+가격: 3카드, 가운데 강조, 하단에 수익 고지 1줄
+신뢰: 캡처 3장 가로 스크롤 + 후기 자리
+FAQ: 6문항 아코디언, 첫 항목 열림
+최종 CTA: 이메일 1개 + 동의 체크 + 크몽 링크
+
+푸터: 사업자 정보·환불 정책·문의 메일
+성능: 이미지 webp 5장 이하, 폼 1스텝, 3일 제작(1일 카피 → 2일 디자인 → 3일 폼·배포)`},
+      {m:'strategy', t:`확정합니다.
+
+· 판단: '강의'가 아니라 '대신 세팅'으로 포지션을 좁히고, 수익 보장 문구를 모두 걷어냈습니다. 전환은 가격이 아니라 '15분이면 끝난다'는 진입장벽으로 만듭니다.
+· 승인 기준: 방문 500, 신청 15, 유료 3. 신청률 2% 미만이면 히어로 B안으로 교체
+· 다음 액션: 크몽 링크 확정 → 3일 제작 → 배포 후 1주 데이터 확인`}
+    ],
+    result:{
+      title:'1인 부업 랜딩페이지 — 스레드 제휴 자동화 세팅',
+      summary:'"강의"가 아니라 "15분이면 끝나는 대신 세팅"으로 포지셔닝하고, 수익 보장 문구를 모두 제거한 8섹션 랜딩으로 신청 15건을 만듭니다.',
+      sections:[
+        {h:'타깃 & 포지셔닝', type:'ul', items:[
+          '타깃 — 퇴근 후 2시간으로 월 30~50만원 부수입을 원하는 30~40 직장인',
+          '경쟁 — 부업 강의·매크로 프로그램 (강의 피로 + 계정 제재 불안)',
+          '포지션 — 강의가 아니라 "대신 세팅해 드리는 서비스"',
+          '1위 메시지 — "매일 30분, 손 안 대고 돌아가는 제휴 글 파이프라인"',
+          'KPI — 방문 500 · 신청 15(3%) · 유료 3'
+        ]},
+        {h:'랜딩 구조 (8섹션)', type:'ul', items:[
+          '히어로 — 헤드라인 1줄 + 서브 2줄 + CTA 1개 + 발행 스크린샷',
+          '문제 공감 — 3줄, 각 25자 이내',
+          '해결 — 3카드 (공식 API / 하루 30분 / 자동 문구)',
+          '작동 방식 — 3단계, 아이콘 + 각 2줄',
+          '가격 — 3단 카드, 가운데 강조, 수익 고지 1줄',
+          '신뢰 — 실제 발행 캡처 3장 + 후기 자리(확보 후)',
+          'FAQ — 6문항 아코디언',
+          '최종 CTA — 이메일 1개 + 동의 체크 + 크몽 링크'
+        ]},
+        {h:'섹션별 핵심 카피', type:'pre', text:'히어로   매일 30분, 손 안 대고 돌아가는 제휴 글 파이프라인\n        글은 AI가, 발행은 Meta 공식 API가. 계정 제재 위험 없이 하루 30분만 확인하세요.\n        [15분 세팅 신청 → 첫 주 7건 발행 확인]\n\n문제      "글 쓸 시간은 없고, 매크로는 계정이 날아갈까 불안하죠"\n해결 1    Meta 공식 API 발행 — 비밀번호 공유 없음\n해결 2    하루 30분 — 승인·확인만 하면 끝\n해결 3    링크·대가성 문구 자동 삽입\n\n가격      세팅만 55,000원 / 세팅+30일 운영 120,000원 / 1:1 코칭 250,000원\n          수익은 계정 상태·상품·시장에 따라 다르며, 금액을 보장하지 않습니다.\n\nCTA       이메일 1개 + 동의 체크 → 크몽 결제 링크'},
+        {h:'가격 3단', type:'ul', items:[
+          '세팅만 55,000원 — 계정 연결·템플릿·첫 발행 1건',
+          '세팅+30일 운영 120,000원 — 주 3회 발행 대행 + 주간 리포트',
+          '1:1 코칭 250,000원 — 90분 2회 + 30일 피드백',
+          '세팅 후 30일 내 발행 실패 시 재세팅 무료 (문구는 실제 정책과 일치시킬 것)'
+        ]},
+        {h:'실행 체크리스트', type:'check', items:[
+          '히어로 60자 이내 · 서브 2줄 · CTA 1개',
+          '가격 섹션에 수익 미보장 고지 삽입',
+          '푸터에 사업자 정보 · 환불 정책 · 문의 메일',
+          '신청 폼 개인정보 동의 체크박스',
+          '이미지 webp 5장 이하 · 모바일 1초 로딩',
+          '크몽 링크 실제 상품으로 연결 확인'
+        ]},
+        {h:'리스크 & 대응', type:'risk', items:[
+          {k:'수익 보장 표현', v:'"월 30~50만원" 기대치 삭제, 미보장 고지 추가'},
+          {k:'가짜 후기', v:'확보 전에는 섹션 비움 또는 "준비 중"'},
+          {k:'전자상거래법', v:'사업자 정보·환불 정책 푸터 표기'},
+          {k:'매크로 오해', v:'Meta 공식 API · 비밀번호 미공유 명시'},
+          {k:'개인정보 수집', v:'이메일 폼에 수집·이용 동의 체크'}
+        ]}
+      ]
+    }
+  };
+}
+
+/* ---- 커스텀 안건: 프로필 추론 + 생성 ---- */
+const STOPWORDS = new Set(['그리고','그러면','대한','위한','하는','있는','없는','이번','우리','저희','관련','정도','때문','어떻게','어떤','빨리','새로','신규','준비','만들','하기','해서','하면','됩니다','해주세요','부탁','기획','홍보','콘텐츠','아이디어','방법','정리','한번','다시','조금','많이']);
+function keywords(text){
+  const parts = String(text).replace(/[^\p{L}\p{N}\s]/gu,' ').split(/\s+/).filter(Boolean);
+  const out = [];
+  for(let p of parts){
+    let w = p.replace(/(은|는|이|가|을|를|의|에|에서|에게|로|으로|와|과|도|만|보다|처럼|부터|까지|라고|라는|하고|으로서)$/,'');
+    if(w.length < 2) continue;
+    if(STOPWORDS.has(w)) continue;
+    if(!out.includes(w)) out.push(w);
+  }
+  return out.slice(0,5);
+}
+function detectProfile(text){
+  if(/릴스|숏폼|영상|유튜브|틱톡|쇼츠|클립|콘티/.test(text)) return 'video';
+  if(/랜딩|페이지|판매|스토어|상품|구매|결제|상세/.test(text)) return 'landing';
+  if(/이벤트|행사|프로모션|할인|세일|오픈|개업|축제|모집|공고/.test(text)) return 'promo';
+  if(/앱|기능|개발|자동화|툴|서비스|프로그램|api|api/i.test(text)) return 'product';
+  return 'sns';
+}
+function pickTopic(list){
+  if(!list.length) return '';
+  const place = /(시|군|구|동|읍|면|도|로|길)$/;
+  let best = 0, bestScore = -99;
+  list.forEach((w,i) => {
+    const score = w.length - (place.test(w) ? 2.5 : 0) + (i === 0 ? 0.3 : 0);
+    if(score > bestScore){ bestScore = score; best = i; }
+  });
+  let topic = list[best];
+  const nxt = list[best+1];
+  if(nxt && nxt.length >= 2 && !place.test(nxt) && topic.length + nxt.length <= 12) topic += ' ' + nxt;
+  return topic;
+}
+function genericWork(agenda){
+  const kw = keywords(agenda);
+  const topic = pickTopic(kw) || String(agenda).slice(0,14);
+  const sec = kw[1] || '';
+  const p = detectProfile(agenda);
+  const labelMap = {sns:'SNS 콘텐츠', video:'숏폼 영상', landing:'랜딩/판매 구조', promo:'프로모션', product:'서비스/기능 기획'};
+  const label = labelMap[p];
+
+  const P = {
+    sns:{
+      goal:'2주 6편 발행 → 저장 100 · 프로필 방문 300 · 문의 5건',
+      focus:'타깃의 장면 하나',
+      t1:'"'+topic+'"를 검색만 하다 지친 20~30대',
+      t2:'"'+topic+'"를 처음 시도하는 1인 사업자',
+      p1:'스펙이 아니라 "'+topic+'" 직전의 장면 하나',
+      p2:'첫 줄에 결론, 근거는 1개만',
+      p3:'CTA 1개, 저장 유도',
+      fmt:'SNS 글 3~5줄 + 이미지 1장(4:5)',
+      len:'문장 3~5개, 각 30자 이내',
+      channel:'평일 07:30 / 주말 11:00',
+      steps:'타깃 장면 캡처 → 3줄 초안 → 이미지 1장 → 예약 발행',
+      assets:'현장/제품 사진 1장, 핵심 숫자 1개',
+      metric:'저장 수 · 프로필 방문 · 링크 클릭',
+      hooks:['"'+topic+', 아직 이렇게 하고 있나요?"','"'+topic+' 3주 해보고 남은 것"','"'+topic+' 때문에 시간 버리는 3가지"'],
+      body:'"'+topic+'"를 하면서 가장 많이 듣는 질문 3개를 본문에 넣고, 마지막 줄에만 링크를 둡니다.',
+      cta:'자세한 방법은 프로필 링크에 정리해뒀어요',
+      chk:['첫 줄 30자 이내 · 결론 먼저','이미지 1장 4:5 크롭','링크는 1곳에만','해시태그 0~2개','발행 후 24시간 저장 수 기록'],
+      risk:[{k:'타깃 불명확',v:'첫 줄에 대상(누구)을 명시'},{k:'과장 표현',v:'"최고·무조건·보장" 삭제'},{k:'링크 남발',v:'본문 1곳, 댓글 1곳까지만'},{k:'후기 근거',v:'실제 경험 기간만 표기'}]
+    },
+    video:{
+      goal:'2주 4편 → 저장 120 · 프로필 방문 200 · 문의 5건',
+      focus:'첫 2초의 문제 장면',
+      t1:'"'+topic+'"를 고민하는 30~40대',
+      t2:'"'+topic+'"를 처음 알아보는 학부모·직장인',
+      p1:'첫 2초에 "'+topic+'"의 문제 장면',
+      p2:'15초 3컷, 컷당 1동작',
+      p3:'자막 필수(무음 시청), CTA는 마지막 2초',
+      fmt:'9:16 15~25초 · 3컷',
+      len:'컷당 2~8초, 자막 12자 이내',
+      channel:'화·목 20:00 업로드',
+      steps:'콘티 3컷 확정 → 촬영(창광·삼각대) → 자막 편집 → 커버·캡션 → 업로드',
+      assets:'제품·현장·자료 소품, 삼각대, 라이선스 BGM',
+      metric:'저장 수 · 끝까지 본 비율 · 프로필 방문',
+      hooks:['"'+topic+', 이 3가지만 보세요"','"'+topic+' 하기 전에 꼭 확인하세요"','"'+topic+'가 안 되는 이유는 따로 있습니다"'],
+      body:'첫 2초는 문제 장면, 3~8초에 이유 3개, 마지막 7초에 해결 순서와 CTA를 넣습니다.',
+      cta:'자세한 순서는 프로필 링크에 있어요',
+      chk:['9:16 · 1080×1920 · 15초(±1초)','첫 프레임에 훅 자막','상단 15%·하단 20% 자막 금지','라이선스 BGM만','커버 카드 + 캡션 첫 줄 훅'],
+      risk:[{k:'성과 과장',v:'점수·수익 상승 약속 표현 삭제'},{k:'초상권',v:'얼굴 노출 시 동의, 아니면 손·사물만'},{k:'BGM 저작권',v:'상업 계정 라이선스 음원만'},{k:'자막 안전영역',v:'UI 가림 영역 비우기'}]
+    },
+    landing:{
+      goal:'방문 500 → 신청 15(3%) → 유료 3',
+      focus:'15분이면 끝나는 진입장벽',
+      t1:'"'+topic+'"를 알아보는 30~40 직장인',
+      t2:'기존 방법에 실패한 1인 사업자',
+      p1:'기능 나열이 아니라 "'+topic+'" 전후 장면',
+      p2:'가격보다 "얼마나 빨리 끝나는지"',
+      p3:'후기·실적은 실제 확보분만',
+      fmt:'8섹션 랜딩 · 모바일 우선',
+      len:'히어로 60자, 섹션당 250자 이내',
+      channel:'배포 후 1주 데이터 확인',
+      steps:'섹션 구조 → 카피 → 목업/이미지 → 폼·결제 연결 → 배포',
+      assets:'실사용 스크린샷 3장, 가격표, 사업자 정보',
+      metric:'신청 완료율 · 크몽 링크 클릭 · 이탈 섹션',
+      hooks:['"'+topic+', 15분이면 끝납니다"','"'+topic+'를 직접 하다 포기한 이유"','"'+topic+', 대신 세팅해 드립니다"'],
+      body:'히어로에서 대상과 결과를 한 줄로 말하고, 문제 3줄 → 해결 3카드 → 작동 3단계 → 가격 → FAQ 순서로 좁힙니다.',
+      cta:'15분 세팅 신청 → 첫 결과 확인',
+      chk:['히어로 60자 · CTA 1개','가격 3단 + 미보장 고지','푸터 사업자 정보·환불 정책','폼 개인정보 동의','모바일 1초 로딩'],
+      risk:[{k:'수익 보장',v:'기대 수익 문구 삭제, 미보장 고지'},{k:'가짜 후기',v:'확보 전 "준비 중"'},{k:'전자상거래법',v:'사업자 정보·환불 정책 표기'},{k:'개인정보',v:'수집·이용 동의 체크'}]
+    },
+    promo:{
+      goal:'인지 3,000 · 신청 60 · 방문 150',
+      focus:'혜택 3개와 기한의 희소성',
+      t1:'"'+topic+'"에 관심 있는 동네 30~50대',
+      t2:'"'+topic+'"를 선물·약속으로 찾는 20~30대',
+      p1:'할인율보다 "언제까지·몇 명" 희소성',
+      p2:'혜택은 3개까지만',
+      p3:'참여 방법 1문장, 링크 1개',
+      fmt:'포스터 1장 + SNS 3줄 + 문자 1건',
+      len:'포스터 문구 5개 이내, SNS 3줄',
+      channel:'오픈 5일 전부터 매일 1회',
+      steps:'혜택 확정 → 포스터 → SNS 3종 → 문자/알림 → 당일 리마인드',
+      assets:'매장/상품 사진, 혜택 표, 참여 QR',
+      metric:'신청 수 · QR 스캔 · 방문 전환',
+      hooks:['"'+topic+', 이번 주까지만"','"'+topic+' 선착순 30명"','"'+topic+' 혜택 3가지 정리"'],
+      body:'혜택 3개와 기간·인원을 첫 화면에 두고, 참여 방법은 한 문장으로 끊습니다.',
+      cta:'지금 신청하고 방문하세요',
+      chk:['기간·인원 명시','혜택 3개 이내','참여 방법 1문장','QR/링크 1개','당일 리마인드 1회'],
+      risk:[{k:'조건 오해',v:'기간·대상·제외 조건 명시'},{k:'허위 할인',v:'실제 판매가 기준으로 표기'},{k:'스팸 문자',v:'수신 동의자에게만 발송'},{k:'품절 대응',v:'조기 종료 시 공지 문구 준비'}]
+    },
+    product:{
+      goal:'베타 신청 50 · 활성 20 · 인터뷰 5',
+      focus:'줄어드는 시간을 보여주는 첫 화면',
+      t1:'"'+topic+'"가 필요한 실무자',
+      t2:'기존 도구로 시간을 쓰는 1인 사업자',
+      p1:'기능 수가 아니라 "'+topic+'"로 줄어드는 시간',
+      p2:'첫 5분 안에 가치 증명',
+      p3:'베타 범위 명확화(무엇이 안 되는지)',
+      fmt:'기획서 + 3단계 온보딩 + 랜딩 1장',
+      len:'기능 설명 1줄, 화면당 3요소 이내',
+      channel:'베타 모집 2주 · 주 2회 공지',
+      steps:'핵심 기능 1개 확정 → 화면 3장 → 온보딩 → 베타 모집 글 → 피드백 인터뷰',
+      assets:'화면 시안 3장, 사용 전후 비교, 개인정보 처리방침',
+      metric:'가입 완료율 · 첫 과업 완료율 · 재방문',
+      hooks:['"'+topic+', 3분이면 끝납니다"','"'+topic+'에 쓰던 시간을 줄였습니다"','"'+topic+' 베타 50명 모집"'],
+      body:'첫 화면에서 무엇이 줄어드는지 보여주고, 기능은 3개만 노출합니다. 안 되는 것은 미리 밝힙니다.',
+      cta:'베타 신청하고 먼저 써보세요',
+      chk:['핵심 기능 1개로 제한','온보딩 3단계 이내','안 되는 기능 명시','개인정보 처리방침 링크','베타 종료 후 가격 고지'],
+      risk:[{k:'기능 과장',v:'"완벽·모두" 삭제, 범위 명시'},{k:'개인정보',v:'수집 항목·보관 기간 고지'},{k:'요금 오해',v:'베타 무료/유료 전환 시점 명시'},{k:'지원 부담',v:'응답 시간·채널 1개로 한정'}]
+    }
+  }[p];
+
+  const shortAgenda = String(agenda).length > 52 ? String(agenda).slice(0,52)+'…' : String(agenda);
+  const hookFixed = P.hooks[0].replace('아직 이렇게 하고 있나요?','이렇게 하고 있었다면 순서를 바꿔보세요').replace('이 3가지만 보세요','이 3가지는 먼저 확인하세요');
+
+  return {
+    key:p, label, topic, agenda, custom:true,
+    messages:[
+      {m:'strategy', t:`안건을 이렇게 쪼갰습니다: "${shortAgenda}"
+
+· 목표: ${P.goal}
+· 타깃 1: ${P.t1}
+· 타깃 2: ${P.t2}
+· 핵심 포인트: ① ${P.p1} ② ${P.p2} ③ ${P.p3}
+· KPI: ${P.metric}
+
+카피 팀원은 타깃 1 기준으로 첫 문장부터 잡아주세요.`},
+      {m:'copy', t:`타깃 1 기준 초안입니다.
+
+· 훅 A: ${P.hooks[0]}
+· 훅 B: ${P.hooks[1]}
+· 훅 C: ${P.hooks[2]}
+· 본문: ${P.body}
+· CTA: "${P.cta}"
+
+A를 기본으로 밀고, B는 3일 뒤 교체용으로 남깁니다. 제작 팀원, 실행 스펙 부탁해요.`},
+      {m:'build', t:`실행 스펙입니다.
+
+· 포맷: ${P.fmt}
+· 길이: ${P.len}
+· 채널/시간: ${P.channel}
+· 제작 순서: ${P.steps}
+· 필요 자산: ${P.assets}
+· 측정: ${P.metric}
+
+검수 팀원, 이 스펙에서 리스크 봐주세요.`},
+      {m:'qa', t:`문구·스펙에서 3개 걸립니다.
+
+1) 훅 A의 "${P.hooks[0]}" — 확인 가능한 사실만 남기고 과장은 빼세요.
+2) "${P.hooks[1]}" — 근거 자료 없이 쓰면 오해를 부를 수 있습니다. 실제 사례 1개로 바꾸거나 삭제하세요.
+3) ${P.risk[0].k} — ${P.risk[0].v}. ${P.risk[1].k} — ${P.risk[1].v}.
+4) ${P.risk[2].k} — ${P.risk[2].v}.
+
+카피 팀원, 훅 A와 본문만 고쳐서 최종 주세요.`},
+      {m:'copy', t:`반영했습니다.
+
+· 훅 A → "${hookFixed}"
+· 본문 → ${P.body} ("최고·무조건·보장" 표현 제거)
+· CTA 유지: "${P.cta}"
+· 삭제한 표현: 단정·과장 형용사, 근거 없는 수치
+
+이제 문장 길이와 첫 줄만 확인하면 됩니다.`},
+      {m:'build', t:`최종 실행안입니다.
+
+· ${P.steps}
+· ${P.channel} · ${P.fmt}
+· 측정: ${P.metric}
+· 발행/배포 전 점검: ${P.chk.slice(0,3).join(' / ')}
+
+이 순서면 3일 안에 첫 결과가 나옵니다.`},
+      {m:'strategy', t:`확정합니다. 결과물 패널에 정리해뒀어요.
+
+· 판단: "${topic}"의 승부처는 ${P.focus}입니다. 기능·가격 경쟁으로 들어가지 않습니다.
+· 승인 기준: ${P.goal}
+· 다음 액션: 오늘 자산 준비(${P.assets.split(',')[0]}), 내일 첫 발행/배포`}
+    ],
+    result:{
+      title:label+' — '+shortAgenda,
+      summary:`"${topic}" 안건의 승부처는 ${P.focus}입니다. 목표는 ${P.goal}, 3일 안에 첫 결과를 확인합니다.`,
+      sections:[
+        {h:'타깃 & 핵심 포인트', type:'ul', items:[
+          '타깃 1 — '+P.t1,
+          '타깃 2 — '+P.t2,
+          '핵심 ① '+P.p1,
+          '핵심 ② '+P.p2,
+          '핵심 ③ '+P.p3,
+          'KPI — '+P.metric
+        ]},
+        {h:'최종 산출물', type:'pre', text:'훅 A  '+hookFixed+'\n훅 B  '+P.hooks[1]+'\n훅 C  '+P.hooks[2]+'\n\n본문  '+P.body+'\n\nCTA   '+P.cta},
+        {h:'실행 스펙', type:'ul', items:[
+          '포맷 — '+P.fmt,
+          '길이 — '+P.len,
+          '채널/시간 — '+P.channel,
+          '제작 순서 — '+P.steps,
+          '필요 자산 — '+P.assets,
+          '측정 — '+P.metric
+        ]},
+        {h:'실행 체크리스트', type:'check', items:P.chk.concat(['첫 결과 후 48시간 안에 수치 기록'])}
+        ,
+        {h:'리스크 & 대응', type:'risk', items:P.risk}
+      ]
+    }
+  };
+}
+
+const PRESET_WORK = {thread:threadWork, reels:reelsWork, landing:landingWork};
+function makeWork(agenda, presetKey){
+  if(presetKey && PRESET_WORK[presetKey]){
+    const w = PRESET_WORK[presetKey]();
+    w.agenda = agenda;
+    return w;
+  }
+  return genericWork(agenda);
+}
+
+/* ---- 추가 지시(개입) 엔진 ---- */
+function classifyDirective(text){
+  const t = String(text);
+  const types = [];
+  if(/담백|건조|차분|과장|말투|톤|문체|정중/.test(t)) types.push('tone');
+  if(/짧|간결|줄여|압축|한 줄/.test(t)) types.push('short');
+  if(/길게|자세|구체|늘려|보강|추가/.test(t)) types.push('expand');
+  if(/가격|비싸|저렴|낮춰|할인|단가|가성비/.test(t)) types.push('price');
+  if(/이모지|이모티콘/.test(t)) types.push('emoji');
+  if(/10대|20대|30대|40대|50대|학부모|직장인|주부|대학생|여성|남성|타깃|타겟/.test(t)) types.push('target');
+  if(!types.length) types.push('general');
+  return types;
+}
+const HYPE = ['무조건','완벽한','완벽','최고','대박','엄청','진짜','극강'];
+function soften(t){
+  let o = String(t);
+  HYPE.forEach(w => { o = o.split(w).join(''); });
+  o = o.replace(/[✔✅💧🙋✨🔥⭐️]/g,'-').replace(/!+/g,'.').replace(/[ \t]{2,}/g,' ').trim();
+  return o;
+}
+function shorten(t){
+  let o = String(t);
+  if(o.indexOf(' — ') > -1) o = o.split(' — ')[0];
+  const m = o.match(/^(.*?(?:다\.|요\.|\.))\s/);
+  if(m && m[1].length >= 12) o = m[1];
+  return o.trim();
+}
+function collectPreLines(section){ return String(section.text||'').split('\n'); }
+function reviseWork(work, directive){
+  const types = classifyDirective(directive);
+  const res = clone(work.result);
+  const oldHistory = res.sections.filter(s => s.h === '변경 이력').reduce((a, s) => a.concat(s.items || []), []);
+  res.sections = res.sections.filter(s => s.h !== '변경 이력');
+  const changes = [];
+  const notes = [];
+  const pushChange = (label, before, after) => {
+    if(!before || before === after) return;
+    changes.push({label, before:String(before).trim(), after:String(after).trim()});
+  };
+
+  // 각 섹션 텍스트 순회
+  const walk = (fn) => {
+    res.sections.forEach(s => {
+      if(s.type === 'p' && s.text) { const nv = fn(s.text); if(nv != null) s.text = nv; }
+      else if(s.type === 'pre'){
+        s.text = collectPreLines(s).map(l => {
+          if(!l.trim()) return l;
+          const nv = fn(l);
+          return nv == null ? l : nv;
+        }).join('\n');
+      }
+      else if(s.type === 'risk'){
+        s.items.forEach(it => { const a = fn(it.k); if(a != null) it.k = a; const b = fn(it.v); if(b != null) it.v = b; });
+      }
+      else if(s.items){
+        s.items = s.items.map(it => { const nv = fn(it); return nv == null ? it : nv; });
+      }
+    });
+  };
+
+  if(types.includes('tone')){
+    let n = 0;
+    walk(t => {
+      const nv = soften(t);
+      if(nv !== t && n < 3){ n++; pushChange('문구 톤', t, nv); }
+      return nv !== t ? nv : null;
+    });
+    notes.push('감탄·과장 표현과 기호를 걷어내고 문장을 담백하게 정리');
+  }
+  if(types.includes('emoji')){
+    walk(t => { const nv = t.replace(/[✔✅💧🙋✨🔥⭐️👉→]/g,'').replace(/\s{2,}/g,' ').trim(); return nv !== t ? nv : null; });
+    notes.push('기호·이모지 제거');
+  }
+  if(types.includes('short')){
+    let n = 0;
+    walk(t => {
+      const nv = shorten(t);
+      if(nv !== t && n < 3){ n++; pushChange('길이 압축', t, nv); }
+      return nv !== t ? nv : null;
+    });
+    notes.push('설명 꼬리를 덜어내고 핵심 문장만 남김');
+  }
+  if(types.includes('price')){
+    let hit = 0;
+    walk(t => {
+      let out = String(t);
+      out = out.replace(/([0-9]{1,3}(?:,[0-9]{3})+)\s*원/g, (m, num) => {
+        const v = parseInt(num.replace(/,/g,''),10);
+        const nv = Math.round(v*0.7/1000)*1000;
+        hit++;
+        return nv.toLocaleString('ko-KR') + '원';
+      });
+      if(out !== t && changes.length < 4) pushChange('가격', t, out);
+      return out !== t ? out : null;
+    });
+    if(hit){
+      notes.push('가격을 30% 낮춰 진입장벽 완화(원가·마진은 따로 확인 필요)');
+    } else {
+      res.sections.push({h:'가격·진입장벽 조정', type:'ul', items:[
+        '1단계를 무료 진단(또는 체험 1회)으로 낮춰 시작',
+        '유료 전환은 결과를 본 뒤 1회만 제안',
+        '가격 인하 대신 제공 범위를 줄여 단가 유지']});
+      changes.push({label:'가격 전략', before:'명시된 가격 없음', after:'1단계 무료 진단으로 진입장벽 완화'});
+      notes.push('가격 요소가 없어 진입장벽을 낮추는 방식으로 해석');
+    }
+  }
+  if(types.includes('target')){
+    const m = String(directive).match(/(10대|20대|30대|40대|50대|학부모|직장인|주부|대학생)/);
+    const nt = m ? m[1] : '새 타깃';
+    let done = false;
+    res.sections.forEach(s => {
+      if(s.h && s.h.indexOf('타깃') > -1 && s.items){
+        s.items = s.items.map(it => {
+          if(/^타깃/.test(it)){
+            const nv = it.replace(/—.*$/, '— ' + nt + ' 중심으로 재설정');
+            if(!done){ pushChange('타깃', it, nv); done = true; }
+            return nv;
+          }
+          return it;
+        });
+      }
+    });
+    notes.push('타깃을 '+nt+'로 바꾸고, 예시·채널은 그대로 두어 검증 조건 유지');
+  }
+  if(types.includes('expand')){
+    const extra = {
+      thread:['A/B 변형 — 같은 본문에 첫 줄만 바꾼 2안을 함께 발행','후속 편 — 일주일 사용 후 변화 기록을 2/2에 추가','댓글 대응 — "가격?" 질문에 링크와 스펙 3줄로만 답하기'],
+      reels:['A/B 변형 — 훅 ②와 ③을 각각 1편씩 제작','후속 편 — "시험 2주 전 루틴"으로 이어지는 시리즈','댓글 대응 — "학원비?" 질문은 프로필 링크로만 안내'],
+      landing:['A/B 변형 — 히어로 B안으로 1주 테스트','추가 섹션 — 실제 발행 캡처 3장 + 30일 리포트 예시','FAQ 보강 — "내 계정도 되나요" 질문에 체크리스트로 답'],
+      video:['A/B 변형 — 훅 2개를 각각 1편씩','후속 편 — 같은 주제 심화 2편','댓글 대응 — 자주 묻는 질문 1개를 다음 편 훅으로'],
+      promo:['A/B 변형 — 혜택 순서만 바꾼 포스터 2종','추가 채널 — 단골 문자 1건 + 매장 QR','마감 대응 — 조기 종료 공지 문구 준비'],
+      product:['A/B 변형 — 온보딩 1단계 문구 2안','추가 자료 — 사용 전후 비교 1장','인터뷰 — 베타 사용자 3명 15분 질문지']
+    }[work.key] || ['A/B 변형 1건','후속 편 1건','댓글 대응 문구 1건'];
+    res.sections.push({h:'보강 메모 (추가 지시 반영)', type:'ul', items:extra});
+    notes.push('실행을 늘리는 보강 3가지를 추가');
+  }
+  if(types.includes('general')){
+    let n = 0;
+    walk(t => { const nv = soften(t); if(nv !== t && n < 2){ n++; pushChange('문구 정리', t, nv); } return nv !== t ? nv : null; });
+    res.sections.push({h:'지휘관 지시 반영', type:'ul', items:[
+      '지시 원문 — "'+directive+'"',
+      '문구 톤과 길이를 한 단계 정리',
+      '구조·채널은 유지 (바꾸면 승인 기준이 흔들림)'
+    ]});
+    notes.push('지시를 문구 정리로 해석해 반영');
+  }
+
+  if(changes.length){
+    const items = changes.map(c => c.label + ': "' + c.before + '" → "' + c.after + '"').concat(oldHistory);
+    res.sections.push({h:'변경 이력', type:'ul', items: items});
+  } else if(oldHistory.length){
+    res.sections.push({h:'변경 이력', type:'ul', items: oldHistory});
+  }
+
+  const labelList = types.map(t => ({tone:'톤',short:'길이',expand:'보강',price:'가격',emoji:'기호',target:'타깃',general:'문구'}[t])).join('·');
+  const first = changes[0];
+  const second = changes[1];
+  const keepTxt = work.key === 'thread' ? '3줄 구조·발행 시간·대가성 문구 위치' :
+                  work.key === 'reels' ? '15초 3컷 구성·업로드 시간·규정 준수' :
+                  work.key === 'landing' ? '8섹션 구조·가격 3단·법정 표기' : '실행 순서·측정 지표';
+
+  const messages = [
+    {m:'strategy', t:`지시 "${directive}" 접수. 반영 범위 먼저 정리합니다.
+
+· 반영 축: ${labelList} — ${notes.join(' / ')}
+· 유지: ${keepTxt}
+· 판단: 이번 라운드는 문구·수치만 손대고 구조는 고정합니다. 구조까지 바꾸면 승인 기준을 다시 세워야 합니다.
+
+카피 팀원, 문구부터 고쳐주세요.`},
+    {m:'copy', t:`지시 반영해 문구를 수정했습니다.${first ? '\n\n· '+first.label+': "'+first.before+'" → "'+first.after+'"' : ''}${second ? '\n· '+second.label+': "'+second.before+'" → "'+second.after+'"' : ''}
+
+· 유지한 것: ${keepTxt}
+· 수정 톤: ${notes[0] || '지시에 맞춰 정리'}`},
+    {m:'build', t:`스펙 쪽 변경 반영합니다.
+
+· 문구가 바뀌어도 발행·제작 순서는 그대로 — 검증 조건이 흔들리지 않게 했습니다.
+· 체크리스트에 "수정본 기준 재확인" 항목 추가
+· 측정 지표는 동일: ${work.key === 'thread' ? '3일 CTR 10% · 7일 구매 3건' : work.key === 'reels' ? '2주 저장 120 · 문의 5건' : work.key === 'landing' ? '방문 500 · 신청 15 · 유료 3' : '첫 결과 48시간 내 기록'}
+· 이전 버전은 이력에 남겨 비교할 수 있게 보관`},
+    {m:'qa', t:`수정본 재검수했습니다.
+
+· 과장·보장 표현 다시 들어가지 않았는지 확인 — ${types.includes('tone') || types.includes('short') ? '통과' : '해당 없음'}
+· 규정 리스크 ${work.key === 'reels' ? '(성적·초상권·BGM)' : work.key === 'thread' ? '(대가성 표기·허위 후기)' : '(표시광고·전자상거래)'} 유지 확인
+· 지시로 빠진 정보가 있으면 결과물 하단 '변경 이력'에서 복원 가능
+· 이대로 확정해도 됩니다.`},
+    {m:'strategy', t:`v${(S.session ? S.session.version + 1 : 2)} 확정. 패널에 갱신해뒀습니다.
+
+· 요약: ${notes.join(', ')}
+· 다음 액션: 수정본으로 바로 실행하고, 48시간 뒤 수치만 확인
+· 추가로 손볼 게 있으면 또 지시해 주세요 — 이력은 남아 있습니다.`}
+  ];
+  return {messages, result:res, notes};
+}
+
+/* =========================================================================
+   12. 실전 API 모드
+   ========================================================================= */
+const PERSONAS = {
+  strategy:'너는 "AI TEAM ROOM"의 전략/기획 팀원이다. 목표를 숫자로, 타깃을 구체적으로 정의하고 회의 범위를 잡는다. 앞 팀원의 발언을 최소 한 번 직접 인용해 받아친다. 결과는 실제로 실행 가능해야 한다. 4~7문장, 불릿 3~5개. 인사말·메타 설명 없이 발언만 써라.',
+  copy:'너는 "AI TEAM ROOM"의 카피/콘텐츠 팀원이다. 전략 팀원이 잡은 타깃과 핵심 포인트를 실제 문구로 옮긴다. 첫 문장(훅)을 최소 2안 만들고, 그중 하나를 골라 본문·CTA까지 완성한다. 앞 발언을 한 번 이상 인용해 받아친다. 4~7문장, 불릿 3~5개. 실제로 붙여넣을 수 있는 문장으로 써라.',
+  build:'너는 "AI TEAM ROOM"의 제작/구현 팀원이다. 채널·포맷·길이·발행 시간·필요 자산·제작 순서까지 실행 스펙으로 구체화한다. 앞 팀원의 문구를 실제 산출물로 만들 수 있게 숫자와 순서를 넣는다. 4~7문장, 불릿 3~5개.',
+  qa:'너는 "AI TEAM ROOM"의 검수/리스크 팀원이다. 지금까지 나온 문구·스펙에서 허점, 과장·보장 표현, 법·플랫폼 규정 위반, 실행 불가 항목을 3개 이상 구체적으로 지적하고 수정안을 요구한다. 앞 팀원의 문장을 직접 인용해 지적한다. 4~7문장, 번호 목록 3~5개.'
+};
+const ROLE_TASK = {
+  strategy:'안건의 목표(숫자), 타깃 2명, 핵심 포인트 3개, KPI를 정하고 다음 팀원에게 요청할 일을 한 줄로 남겨라.',
+  copy:'전략이 잡은 타깃 1 기준으로 훅 2안, 본문, CTA를 실제 문장으로 써라. 앞 발언의 핵심 포인트를 문장으로 옮겨라.',
+  build:'지금까지 나온 문구를 실행할 수 있게 포맷·길이·발행 시간·제작 순서·필요 자산·측정 지표를 정해라.',
+  qa:'허점·과장·규정 위반을 3개 이상 지적하고, 카피/제작 팀원에게 구체적 수정을 요구해라.'
+};
+
+function apiError(provider, status, data){
+  const label = PROVIDERS[provider].label;
+  const msg = (data && (data.error && (data.error.message || data.error.status) || data.message)) || '';
+  let text;
+  if(status === 401 || status === 403) text = label + ' API 키가 거부됐어요. 설정에서 키와 권한을 확인해 주세요. (' + status + ')';
+  else if(status === 404) text = '모델명을 찾을 수 없어요. 설정에서 모델명을 확인해 주세요. (404' + (msg ? ' · ' + msg : '') + ')';
+  else if(status === 429) text = '요청 한도나 크레딧이 부족해요. 잠시 뒤 다시 시도하거나 결제 상태를 확인해 주세요. (429)';
+  else if(status >= 500) text = label + ' 서버 오류(' + status + '). 잠시 뒤 다시 시도해 주세요.';
+  else text = label + ' 요청 실패(' + status + ')' + (msg ? ' · ' + msg : '');
+  const e = new Error(text);
+  e.userText = text;
+  return e;
+}
+async function readJson(r){
+  try{ return await r.json(); }catch(e){ return {}; }
+}
+async function callLLM(system, user, maxTokens){
+  const cfg = apiConfig();
+  if(!cfg.key){ const e = new Error('API 키가 없습니다. 설정에서 키를 저장해 주세요.'); e.userText = e.message; throw e; }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45000);
+  try{
+    if(cfg.provider === 'openai'){
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method:'POST', signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+        body:JSON.stringify({model:cfg.model, temperature:0.75, max_tokens:maxTokens||700,
+          messages:[{role:'system',content:system},{role:'user',content:user}]})
+      });
+      const d = await readJson(r);
+      if(!r.ok) throw apiError('openai', r.status, d);
+      const out = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+      if(!out) throw apiError('openai', 500, {error:{message:'빈 응답'}});
+      return String(out).trim();
+    }
+    if(cfg.provider === 'gemini'){
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(cfg.model) + ':generateContent?key=' + encodeURIComponent(cfg.key);
+      const r = await fetch(url, {
+        method:'POST', signal:ctrl.signal,
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          systemInstruction:{parts:[{text:system}]},
+          contents:[{role:'user',parts:[{text:user}]}],
+          generationConfig:{temperature:0.75, maxOutputTokens:maxTokens||800}
+        })
+      });
+      const d = await readJson(r);
+      if(!r.ok) throw apiError('gemini', r.status, d);
+      if(d.promptFeedback && d.promptFeedback.blockReason) throw apiError('gemini', 400, {error:{message:'안전 정책으로 차단됨: ' + d.promptFeedback.blockReason}});
+      const parts = d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts;
+      const out = Array.isArray(parts) ? parts.map(p => p.text || '').join('').trim() : '';
+      if(!out) throw apiError('gemini', 500, {error:{message:'빈 응답'}});
+      return out;
+    }
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', signal:ctrl.signal,
+      headers:{'content-type':'application/json','x-api-key':cfg.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:cfg.model, max_tokens:maxTokens||700, temperature:0.75, system:system,
+        messages:[{role:'user',content:user}]})
+    });
+    const d = await readJson(r);
+    if(!r.ok) throw apiError('claude', r.status, d);
+    const out = Array.isArray(d.content) ? d.content.filter(b => b.type === 'text').map(b => b.text).join('').trim() : '';
+    if(!out) throw apiError('claude', 500, {error:{message:'빈 응답'}});
+    return out;
+  }catch(err){
+    if(err && err.name === 'AbortError'){
+      const e = new Error('응답이 45초 안에 오지 않았어요. 네트워크나 제공사 상태를 확인해 주세요.'); e.userText = e.message; throw e;
+    }
+    if(err && err.userText) throw err;
+    const e = new Error('브라우저에서 ' + PROVIDERS[cfg.provider].label + ' 서버로 직접 연결하지 못했어요(CORS·네트워크). 체험 모드로 이어서 진행할 수 있어요.');
+    e.userText = e.message; e.network = true; throw e;
+  } finally { clearTimeout(timer); }
+}
+function apiConfig(){
+  const p = S.api.provider;
+  return {provider:p, key:keyOf(p), model:modelOf(p)};
+}
+function transcriptText(session, directive){
+  const rows = session.messages.filter(m => m.kind === 'speech').map(m => MEMBERS[m.member].name + '(' + MEMBERS[m.member].role + '): ' + m.text);
+  let t = rows.join('\n\n');
+  if(t.length > 6000) t = t.slice(t.length - 6000);
+  if(directive) t += '\n\n[지휘관 추가 지시]\n' + directive;
+  return t || '(아직 발언 없음)';
+}
+async function callRole(id, session, directive){
+  const user = '[안건]\n' + session.agenda + '\n\n[회의록]\n' + transcriptText(session, directive) + '\n\n[네 차례]\n' + ROLE_TASK[id] + (directive ? '\n지휘관 추가 지시("' + directive + '")를 반드시 반영하되, 앞 발언에서 유지할 것과 바꿀 것을 구분해 밝혀라.' : '') + '\n한국어로, 인사말 없이 발언만. 700자 이내.';
+  return await callLLM(PERSONAS[id], user, 700);
+}
+async function callSynthesis(session, directive){
+  const sys = '너는 "AI TEAM ROOM"의 전략/기획 팀원으로 회의를 정리한다. 지휘관에게 바로 쓸 수 있는 최종 산출물을 마크다운으로만 출력한다. 다른 설명·인사는 넣지 않는다.';
+  const user = '[안건]\n' + session.agenda + '\n\n[회의록]\n' + transcriptText(session, directive) + '\n\n[출력 형식 — 이 형식만]\n# (산출물 제목)\n## 한 줄 결론\n(2문장 이내)\n## 타깃 & 핵심 포인트\n- 4~6개\n## 최종 산출물\n(그대로 복사해 쓸 수 있는 완성 문구·구조·콘티. 여러 블록이면 ### 소제목 사용)\n## 실행 체크리스트\n- [ ] 5~7개\n## 리스크 & 대응\n- **리스크** — 대응'; 
+  return await callLLM(sys, user, 1100);
+}
+function parseResultMarkdown(md){
+  const lines = String(md || '').replace(/\r/g,'').split('\n');
+  let title = '최종 산출물', summary = '', sections = [], cur = null, buf = [];
+  const flush = () => {
+    if(!cur) { buf = []; return; }
+    const body = buf.join('\n').trim();
+    if(!body){ cur = null; buf = []; return; }
+    const bl = body.split('\n').map(l => l.trim()).filter(Boolean);
+    if(bl.every(l => /^- \[ \]/.test(l))) cur.type = 'check', cur.items = bl.map(l => l.replace(/^- \[ \]\s*/,'').trim());
+    else if(bl.every(l => /^[-*·]\s/.test(l))) cur.type = 'ul', cur.items = bl.map(l => l.replace(/^[-*·]\s+/,'').replace(/^\[ \]\s*/,'').trim());
+    else cur.type = 'pre', cur.text = bl.join('\n').replace(/^###\s*/gm, '');
+    if(cur.type !== 'p') sections.push(cur);
+    cur = null; buf = [];
+  };
+  lines.forEach(raw => {
+    const line = raw.replace(/\s+$/,'');
+    if(/^#\s+/.test(line) && title === '최종 산출물'){ flush(); title = line.replace(/^#\s+/,'').trim(); return; }
+    if(/^##\s+/.test(line)){
+      flush();
+      const h = line.replace(/^##\s+/,'').trim();
+      if(/한 줄 결론/.test(h)){ cur = {h:'', type:'summary'}; return; }
+      cur = {h:h, type:'ul', items:[]};
+      return;
+    }
+    if(/^###\s+/.test(line)){
+      if(cur && cur.type === 'summary'){ flush(); }
+      buf.push('');
+      buf.push('### ' + line.replace(/^###\s+/,'').trim());
+      return;
+    }
+    if(cur && cur.type === 'summary'){
+      if(line.trim()) summary += (summary ? ' ' : '') + line.trim();
+      return;
+    }
+    buf.push(line);
+  });
+  flush();
+  if(!summary) summary = '회의에서 정리한 최종 산출물입니다.';
+  return {title:title, summary:summary, sections:sections};
+}
+function appendErrorCard(session, err){
+  const tl = $('#timeline');
+  const el = document.createElement('div');
+  el.className = 'msg';
+  el.innerHTML = '<div class="wrap" style="max-width:100%"><div class="bubble" style="border-color:#ffd9d9;background:#fff8f8">'
+    + '<p style="font-weight:900;color:#a33;margin:0 0 4px">API 오류</p>'
+    + '<p style="margin:0 0 8px">' + esc(err.userText || err.message || String(err)) + '</p>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+    + '<button type="button" class="btn tiny ghost" data-act="fallback-demo">체험 모드로 이어서</button>'
+    + '<button type="button" class="btn tiny ghost" data-act="open-settings">설정 열기</button>'
+    + '</div></div></div>';
+  tl.appendChild(el);
+  scrollBottom();
+}
+
+async function runApiRound(session, directive, token){
+  const roles = ORDER;
+  for(const id of roles){
+    if(token !== S.runToken) return false;
+    setMemberStatus(id,'think');
+    showTyping(id);
+    $('#runningText').textContent = MEMBERS[id].name + ' 팀원 · API 응답 대기 중…';
+    try{
+      const text = await callRole(id, session, directive);
+      if(token !== S.runToken) return false;
+      hideTyping();
+      setMemberStatus(id,'done');
+      const msg = {kind:'speech', member:id, text:text, at:Date.now()};
+      session.messages.push(msg);
+      appendMessage(msg);
+      await wait(30);
+    }catch(err){
+      hideTyping();
+      session.status = 'error';
+      appendErrorCard(session, err);
+      return false;
+    }
+  }
+  if(token !== S.runToken) return false;
+  setMemberStatus('strategy','think');
+  showTyping('strategy');
+  $('#runningText').textContent = '전략 팀원 · 최종 산출물 정리 중…';
+  try{
+    const md = await callSynthesis(session, directive);
+    if(token !== S.runToken) return false;
+    hideTyping();
+    setMemberStatus('strategy','done');
+    const msg = {kind:'speech', member:'strategy', text:'회의 내용을 최종 산출물로 정리했습니다. 오른쪽 패널(모바일은 결과물 탭)에서 복사하거나 .md로 저장하세요.', at:Date.now()};
+    session.messages.push(msg);
+    appendMessage(msg);
+    session.result = parseResultMarkdown(md);
+    session.version = (session.version || 0) + 1;
+    return true;
+  }catch(err){
+    hideTyping();
+    session.status = 'error';
+    appendErrorCard(session, err);
+    return false;
+  }
+}
+
+/* =========================================================================
+   13. 회의 실행 (공통 러너)
+   ========================================================================= */
+function thinkDelay(){
+  if(S.speed === 'instant') return 0;
+  if(S.speed === 'fast') return 20;
+  return 520 + Math.round(Math.random()*260);
+}
+function gapDelay(){
+  if(S.speed === 'instant') return 0;
+  if(S.speed === 'fast') return 10;
+  return 160;
+}
+async function wait(ms){ if(ms > 0) await sleep(ms); }
+
+async function playPlan(session, plan, token){
+  for(let i=0;i<plan.length;i++){
+    if(token !== S.runToken) return false;
+    const step = plan[i];
+    if(step.kind === 'sys'){
+      const sm = {kind:'sys', text:step.text, bold:step.bold, at:Date.now()};
+      session.messages.push(sm);
+      appendMessage(sm);
+      await wait(S.speed === 'normal' ? 360 : 10);
+      continue;
+    }
+    setMemberStatus(step.m,'think');
+    $('#runningText').textContent = MEMBERS[step.m].name + ' 팀원이 생각 중…';
+    showTyping(step.m);
+    await wait(thinkDelay());
+    if(token !== S.runToken) return false;
+    hideTyping();
+    setMemberStatus(step.m,'done');
+    const msg = {kind:'speech', member:step.m, text:step.t, at:Date.now()};
+    session.messages.push(msg);
+    appendMessage(msg);
+    await wait(gapDelay());
+  }
+  return true;
+}
+
+function ensureSession(agenda, presetKey){
+  return {
+    id:uid(), createdAt:Date.now(), agenda:agenda, presetKey:presetKey || null,
+    mode:S.mode, provider:S.mode === 'api' ? S.api.provider : null,
+    model:S.mode === 'api' ? modelOf(S.api.provider) : null,
+    messages:[], result:null, version:0, directives:[], status:'running', work:null
+  };
+}
+
+function finishSession(sess, token){
+  if(token !== S.runToken) return;
+  S.running = false;
+  hideTyping();
+  if(sess.result){
+    sess.status = 'done';
+    const endMsg = {kind:'sys', bold:'회의 종료', text:'v' + sess.version + ' 결과물 준비 완료 · 아래에서 추가 지시를 남길 수 있어요', at:Date.now()};
+    sess.messages.push(endMsg);
+    appendMessage(endMsg);
+    persistSession(sess);
+  }
+  syncComposer();
+  renderPanel();
+  scrollBottom();
+  setTimeout(scrollBottom, 80);
+}
+
+async function startMeeting(agenda, presetKey){
+  if(S.running){ toast('회의가 진행 중이에요'); return; }
+  agenda = String(agenda || '').replace(/\s+/g,' ').trim();
+  if(!agenda){ toast('안건을 먼저 입력해 주세요'); $('#agendaInput').focus(); return; }
+  if(S.mode === 'api' && !keyOf(S.api.provider)){ openModal('settingsModal'); toast('API 키를 먼저 저장해 주세요'); return; }
+
+  const sess = ensureSession(agenda, presetKey);
+  S.session = sess;
+  S.running = true;
+  const token = ++S.runToken;
+  resetTeamStatuses();
+  setView('room');
+  $('#timeline').innerHTML = '';
+  const cmdMsg = {kind:'cmd', label:'지휘관 안건', text:agenda, at:Date.now()};
+  sess.messages.push(cmdMsg);
+  appendMessage(cmdMsg);
+  const startMsg = {kind:'sys', text:(S.mode === 'api' ? 'API 모드 · ' + PROVIDERS[S.api.provider].label + ' ' + modelOf(S.api.provider) : '체험 모드 · API 키 없이 실행') + ' · 팀원 4명 소집', at:Date.now()};
+  sess.messages.push(startMsg);
+  appendMessage(startMsg);
+  $('#agendaInput').value = '';
+  syncComposer();
+  renderPanel();
+  try{
+    if(S.mode === 'api'){
+      const ok = await runApiRound(sess, null, token);
+      if(!ok && sess.status === 'error'){ sess.status = 'error'; }
+    }else{
+      sess.work = makeWork(agenda, presetKey);
+      const ok = await playPlan(sess, sess.work.messages, token);
+      if(!ok) return;
+      sess.result = sess.work.result;
+      sess.version = 1;
+    }
+  } finally {
+    finishSession(sess, token);
+  }
+}
+
+async function applyDirective(text){
+  const sess = S.session;
+  if(!sess || !sess.result){ toast('먼저 회의를 진행해 주세요'); return; }
+  if(S.running){ toast('회의가 진행 중이에요'); return; }
+  text = String(text || '').replace(/\s+/g,' ').trim();
+  if(!text){ toast('추가 지시를 입력해 주세요'); $('#directiveInput').focus(); return; }
+  if(S.mode === 'api' && !keyOf(S.api.provider)){ openModal('settingsModal'); toast('API 키를 먼저 저장해 주세요'); return; }
+
+  S.running = true;
+  const token = ++S.runToken;
+  sess.status = 'running';
+  if(S.mode === 'api'){ sess.mode = 'api'; sess.provider = S.api.provider; sess.model = modelOf(S.api.provider); }
+  sess.directives.push(text);
+  resetTeamStatuses();
+  setView('room');
+  const dirMsg = {kind:'cmd', label:'지휘관 추가 지시', text:text, at:Date.now()};
+  sess.messages.push(dirMsg);
+  appendMessage(dirMsg);
+  $('#directiveInput').value = '';
+  syncComposer();
+  try{
+    if(S.mode === 'api'){
+      await runApiRound(sess, text, token);
+    }else{
+      if(!sess.work){
+        sess.work = {key:'custom', label:'불러온 회의', topic:sess.agenda, agenda:sess.agenda, messages:[], result:clone(sess.result)};
+      }
+      const rev = reviseWork(sess.work, text);
+      const ok = await playPlan(sess, rev.messages, token);
+      if(!ok) return;
+      sess.result = rev.result;
+      sess.work.result = rev.result;
+      sess.version = (sess.version || 1) + 1;
+    }
+  } finally {
+    finishSession(sess, token);
+  }
+}
+
+function stopRun(){
+  if(!S.running) return;
+  S.runToken++;
+  S.running = false;
+  hideTyping();
+  ORDER.forEach(id => setMemberStatus(id, 'idle'));
+  const sess = S.session;
+  if(sess){
+    sess.status = sess.result ? 'done' : 'idle';
+    const m = {kind:'sys', text:'지휘관이 회의를 중단했습니다', at:Date.now()};
+    sess.messages.push(m);
+    appendMessage(m);
+  }
+  syncComposer();
+  renderPanel();
+  toast('회의를 중단했어요');
+}
+
+function newMeeting(){
+  S.runToken++;
+  S.running = false;
+  hideTyping();
+  S.session = null;
+  resetTeamStatuses();
+  $('#timeline').innerHTML = emptyStateHtml();
+  $('#agendaInput').value = '';
+  $('#directiveInput').value = '';
+  $('#resultBadge').hidden = true;
+  renderPanel();
+  syncComposer();
+  setView('room');
+  toast('새 회의를 시작할 수 있어요');
+}
+
+async function fallbackToDemo(){
+  const sess = S.session;
+  if(!sess || S.running) return;
+  S.mode = 'demo';
+  updateModeUi();
+  sess.mode = 'demo';
+  sess.provider = null;
+  sess.work = sess.work || makeWork(sess.agenda, sess.presetKey);
+  S.running = true;
+  const token = ++S.runToken;
+  resetTeamStatuses();
+  const fbMsg = {kind:'sys', text:'API 호출이 막혀 체험 모드로 전환 · 같은 안건으로 이어서 진행', at:Date.now()};
+  sess.messages.push(fbMsg);
+  appendMessage(fbMsg);
+  syncComposer();
+  const played = sess.messages.filter(m => m.kind === 'speech').length;
+  const plan = sess.work.messages.slice(Math.min(played, sess.work.messages.length));
+  try{
+    if(!plan.length) return;
+    const ok = await playPlan(sess, plan, token);
+    if(!ok) return;
+    sess.result = sess.work.result;
+    sess.version = Math.max(1, (sess.version || 0) + 1);
+  } finally {
+    finishSession(sess, token);
+  }
+}
+
+/* =========================================================================
+   14. 결과물 복사 · 다운로드 · 회의록
+   ========================================================================= */
+async function copyResult(){
+  if(!S.session || !S.session.result) return;
+  const md = resultToMarkdown(S.session.result);
+  try{
+    await navigator.clipboard.writeText(md);
+    toast('최종 산출물을 Markdown으로 복사했어요');
+  }catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = md; ta.style.position = 'fixed'; ta.style.top = '-1000px';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast('최종 산출물을 복사했어요'); }
+    catch(e2){ toast('복사에 실패했어요. 텍스트를 직접 선택해 주세요'); }
+    ta.remove();
+  }
+}
+function buildMinutes(sess){
+  const L = [];
+  L.push('# AI 팀 회의록 — ' + sess.agenda);
+  L.push('');
+  L.push('- 일시: ' + new Date(sess.createdAt).toLocaleString('ko-KR'));
+  L.push('- 모드: ' + (sess.mode === 'api' ? ('API · ' + PROVIDERS[sess.provider || 'openai'].label + ' ' + (sess.model || '')) : '체험 모드'));
+  L.push('- 팀원: ' + ORDER.map(id => MEMBERS[id].name + '(' + MEMBERS[id].role + ')').join(', '));
+  if(sess.directives && sess.directives.length) L.push('- 추가 지시: ' + sess.directives.map(d => '"' + d + '"').join(', '));
+  L.push('');
+  L.push('## 회의 타임라인');
+  L.push('');
+  sess.messages.forEach(m => {
+    if(m.kind === 'cmd'){ L.push('**' + (m.label || '지휘관') + '**: ' + m.text); L.push(''); }
+    else if(m.kind === 'sys'){ L.push('> _' + m.text + '_'); L.push(''); }
+    else if(m.kind === 'speech'){
+      L.push('**' + MEMBERS[m.member].name + ' (' + MEMBERS[m.member].role + ')**');
+      L.push('');
+      L.push(m.text);
+      L.push('');
+    }
+  });
+  L.push('---');
+  L.push('');
+  L.push('## 최종 산출물 (v' + sess.version + ')');
+  L.push('');
+  L.push(resultToMarkdown(sess.result));
+  L.push('');
+  L.push('---');
+  L.push('_AI TEAM ROOM에서 생성한 회의록입니다._');
+  return L.join('\n');
+}
+function downloadMd(){
+  const sess = S.session;
+  if(!sess || !sess.result) return;
+  const md = buildMinutes(sess);
+  const blob = new Blob([md], {type:'text/markdown;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'AI팀회의록_' + fileStamp(sess.createdAt) + '.md';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  toast('회의록 .md 파일을 저장했어요');
+}
+
+/* =========================================================================
+   15. 이력 · 설정 모달
+   ========================================================================= */
+function renderHistory(){
+  const list = loadSessions();
+  const box = $('#histList');
+  if(!list.length){
+    box.innerHTML = '<div class="hist-empty">아직 저장된 회의가 없어요.<br>회의가 끝나면 자동으로 저장됩니다.</div>';
+    return;
+  }
+  box.innerHTML = list.map(s => {
+    const modeTxt = s.mode === 'api' ? ('API · ' + PROVIDERS[s.provider || 'openai'].label) : '체험';
+    const agenda = s.agenda.length > 44 ? s.agenda.slice(0,44) + '…' : s.agenda;
+    return '<div class="hist" data-id="' + esc(s.id) + '">'
+      + '<div class="hi"><b>' + esc(agenda) + '</b>'
+      + '<span class="hm"><span class="tagm">' + modeTxt + '</span> v' + (s.version || 1) + ' · ' + dateLabel(s.createdAt) + '</span></div>'
+      + '<div class="ha"><button type="button" class="btn ghost" data-act="load">불러오기</button>'
+      + '<button type="button" class="btn ghost" data-act="del" aria-label="삭제">' + ICON.trash + '</button></div></div>';
+  }).join('');
+}
+function loadSessionById(id){
+  const list = loadSessions();
+  const found = list.find(x => x.id === id);
+  if(!found) return;
+  S.runToken++;
+  S.running = false;
+  const sess = clone(found);
+  sess.status = 'done';
+  S.session = sess;
+  closeModal('historyModal');
+  const tl = $('#timeline');
+  tl.innerHTML = '';
+  sess.messages.forEach(m => appendMessage(m));
+  resetTeamStatuses();
+  ORDER.forEach(mid => setMemberStatus(mid, 'done'));
+  renderPanel();
+  syncComposer();
+  setView('room');
+  toast('이전 회의를 불러왔어요 · 추가 지시도 가능해요');
+}
+function deleteSessionById(id){
+  try{
+    const list = loadSessions().filter(x => x.id !== id);
+    localStorage.setItem(LS.sessions, JSON.stringify(list));
+  }catch(e){}
+  renderHistory();
+  toast('회의를 삭제했어요');
+}
+function openModal(id){
+  const m = document.getElementById(id);
+  if(!m) return;
+  m.hidden = false;
+  document.body.style.overflow = 'hidden';
+  if(id === 'historyModal') renderHistory();
+  if(id === 'settingsModal') syncSettings();
+  const f = m.querySelector('input, button');
+  if(f) setTimeout(() => { try{ f.focus(); }catch(e){} }, 40);
+}
+function closeModal(id){
+  const m = document.getElementById(id);
+  if(m) m.hidden = true;
+  document.body.style.overflow = '';
+  if(id === 'settingsModal' && S.mode === 'api' && !keyOf(S.api.provider)){
+    S.mode = 'demo';
+    updateModeUi();
+  }
+}
+function syncSettings(){
+  const p = S.api.provider;
+  $$('#providers .prov').forEach(b => b.classList.toggle('is-on', b.dataset.provider === p));
+  const ki = $('#keyInput');
+  ki.value = keyOf(p);
+  ki.type = 'password';
+  $('#eyeBtn').textContent = '보기';
+  $('#modelInput').value = modelOf(p);
+  $('#modelInput').placeholder = PROVIDERS[p].model;
+  $('#modelDefault').textContent = '기본: ' + PROVIDERS[p].model;
+  ki.placeholder = PROVIDERS[p].hint;
+  const k = keyOf(p);
+  const st = $('#keyState');
+  if(k){ st.textContent = '저장된 키 있음 · ' + k.slice(0,4) + '···' + k.slice(-4); st.className = 'key-state ok'; }
+  else { st.textContent = '저장된 키 없음'; st.className = 'key-state'; }
+  $('#testResult').hidden = true;
+}
+function saveKeySettings(){
+  const p = S.api.provider;
+  S.api.keys[p] = $('#keyInput').value.trim();
+  S.api.models[p] = $('#modelInput').value.trim();
+  saveApi();
+  syncSettings();
+  if(S.api.keys[p]) toast(PROVIDERS[p].label + ' 키를 이 브라우저에 저장했어요');
+  else toast('빈 키가 저장됐어요 · 체험 모드로 실행됩니다');
+  if(S.api.keys[p]){ S.mode = 'api'; updateModeUi(); }
+}
+function clearKeySettings(){
+  const p = S.api.provider;
+  S.api.keys[p] = '';
+  saveApi();
+  syncSettings();
+  toast(PROVIDERS[p].label + ' 키를 삭제했어요');
+}
+async function testConnection(){
+  const box = $('#testResult');
+  const p = S.api.provider;
+  const key = $('#keyInput').value.trim();
+  if(!key){ box.hidden = false; box.className = 'test-result err'; box.textContent = 'API 키를 입력하고 저장한 뒤 테스트해 주세요.'; return; }
+  box.hidden = false;
+  box.className = 'test-result';
+  box.textContent = '연결 확인 중…';
+  const prevKey = S.api.keys[p];
+  const prevModel = S.api.models[p];
+  S.api.keys[p] = key;
+  S.api.models[p] = $('#modelInput').value.trim();
+  try{
+    const out = await callLLM('연결 테스트. 인사하지 말고 "ok"만 출력해.', 'ok', 16);
+    box.className = 'test-result ok';
+    box.textContent = '연결 성공 · ' + PROVIDERS[p].label + ' ' + modelOf(p) + ' 응답: ' + out.slice(0,40);
+  }catch(err){
+    box.className = 'test-result err';
+    box.textContent = err.userText || err.message || '연결에 실패했어요';
+  }finally{
+    S.api.keys[p] = prevKey;
+    S.api.models[p] = prevModel;
+  }
+}
+
+/* =========================================================================
+   16. 이벤트 · 초기화
+   ========================================================================= */
+function bindEvents(){
+  const input = $('#agendaInput');
+  input.addEventListener('input', () => { $('#startBtn').disabled = !input.value.trim() || S.running; });
+  input.addEventListener('keydown', (e) => {
+    if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); startMeeting(input.value, null); }
+  });
+  $('#startBtn').addEventListener('click', () => startMeeting($('#agendaInput').value, null));
+
+  $('#timeline').addEventListener('click', (e) => {
+    const preset = e.target.closest('[data-preset]');
+    if(preset){
+      const k = preset.dataset.preset;
+      const ag = PRESET_AGENDAS[k] || preset.querySelector('b').textContent;
+      $('#agendaInput').value = ag;
+      startMeeting(ag, k);
+      return;
+    }
+    const act = e.target.closest('[data-act]');
+    if(act){
+      const a = act.dataset.act;
+      if(a === 'fallback-demo'){ fallbackToDemo(); }
+      if(a === 'open-settings') openModal('settingsModal');
+    }
+  });
+
+  $$('#modeSeg .seg-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  $('#modeChip').addEventListener('click', () => setMode(S.mode === 'api' ? 'demo' : 'api'));
+  $('#fastBtn').addEventListener('click', () => { S.speed = 'fast'; toast('빠르게 진행합니다'); });
+  $('#stopBtn').addEventListener('click', stopRun);
+
+  $('#directiveBtn').addEventListener('click', () => applyDirective($('#directiveInput').value));
+  $('#directiveInput').addEventListener('keydown', (e) => {
+    if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); applyDirective($('#directiveInput').value); }
+  });
+  $('#directiveChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-dir]');
+    if(!chip) return;
+    const d = chip.dataset.dir;
+    $('#directiveInput').value = d;
+    applyDirective(d);
+  });
+  $('#newBtn').addEventListener('click', newMeeting);
+
+  $('#copyBtn').addEventListener('click', copyResult);
+  $('#mdBtn').addEventListener('click', downloadMd);
+  $('#backBtn').addEventListener('click', () => setView('room'));
+  $$('.tab').forEach(t => t.addEventListener('click', () => setView(t.dataset.view)));
+
+  $('#settingsBtn').addEventListener('click', () => openModal('settingsModal'));
+  $('#historyBtn').addEventListener('click', () => openModal('historyModal'));
+  $$('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
+  $$('.modal').forEach(m => m.addEventListener('click', (e) => { if(e.target === m) closeModal(m.id); }));
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){ $$('.modal').forEach(m => { if(!m.hidden) closeModal(m.id); }); }
+  });
+
+  $('#providers').addEventListener('click', (e) => {
+    const b = e.target.closest('.prov');
+    if(!b) return;
+    S.api.provider = b.dataset.provider;
+    saveApi();
+    syncSettings();
+    syncModelHint();
+  });
+  $('#eyeBtn').addEventListener('click', () => {
+    const ki = $('#keyInput');
+    ki.type = ki.type === 'password' ? 'text' : 'password';
+    $('#eyeBtn').textContent = ki.type === 'password' ? '보기' : '숨기기';
+  });
+  $('#saveKeyBtn').addEventListener('click', saveKeySettings);
+  $('#clearKeyBtn').addEventListener('click', clearKeySettings);
+  $('#testBtn').addEventListener('click', testConnection);
+
+  $('#histList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if(!b) return;
+    const row = b.closest('.hist');
+    if(!row) return;
+    if(b.dataset.act === 'load') loadSessionById(row.dataset.id);
+    if(b.dataset.act === 'del') deleteSessionById(row.dataset.id);
+  });
+  $('#clearHistBtn').addEventListener('click', () => {
+    try{ localStorage.removeItem(LS.sessions); }catch(e){}
+    renderHistory();
+    toast('회의 이력을 모두 삭제했어요');
+  });
+}
+
+function init(){
+  renderTeamBar();
+  renderPanel();
+  resetTimeline();
+  updateModeUi();
+  syncComposer();
+  if(S.mode === 'api' && !keyOf(S.api.provider)) S.mode = 'demo';
+  updateModeUi();
+  bindEvents();
+  window.__aiTeamRoom = {
+    state:S,
+    start:startMeeting,
+    directive:applyDirective,
+    makeWork:makeWork,
+    reviseWork:reviseWork,
+    resultToMarkdown:resultToMarkdown,
+    buildMinutes:buildMinutes,
+    setSpeed:(v) => { S.speed = v; },
+    setMode:setMode,
+    newMeeting:newMeeting
+  };
+  window.addEventListener('resize', () => { renderPanel(); });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
